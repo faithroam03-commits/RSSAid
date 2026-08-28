@@ -2,3 +2,6 @@ node_modules
 .next
 data/*.db
 .env*
+data/*.db-shm
+data/*.db-wal
+THIS_IS_TERMUX_PROJECT.txt

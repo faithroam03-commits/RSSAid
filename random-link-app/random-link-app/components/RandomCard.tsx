@@ -11,10 +11,15 @@ export default function RandomCard({ item, genre }: { item?: LinkRecord; genre?:
   }
 
   const refresh = () => {
-    const base = genre ? `/genre/${encodeURIComponent(genre)}` : "/";
-    router.push(`${base}?r=${Date.now()}`);
-    router.refresh();
-  };
+  const base = genre
+    ? `/?genre=${encodeURIComponent(genre)}`
+    : "/";
+
+  const separator = genre ? "&" : "?";
+
+  router.push(`${base}${separator}r=${Date.now()}`);
+  router.refresh();
+};
 
   return (
     <section className="hero">

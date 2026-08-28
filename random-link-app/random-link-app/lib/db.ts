@@ -52,7 +52,37 @@ export function randomLink(genre?: string): LinkRecord | undefined {
     "SELECT * FROM links WHERE enabled = 1 ORDER BY RANDOM() LIMIT 1"
   ).get() as LinkRecord | undefined;
 }
+export function randomLinks(
+  count: number,
+  genre?: string
+): LinkRecord[] {
+  if (genre) {
+    return db
+      .prepare(
+        `
+        SELECT *
+        FROM links
+        WHERE enabled = 1
+          AND genre = ?
+        ORDER BY RANDOM()
+        LIMIT ?
+        `
+      )
+      .all(genre, count) as LinkRecord[];
+  }
 
+  return db
+    .prepare(
+      `
+      SELECT *
+      FROM links
+      WHERE enabled = 1
+      ORDER BY RANDOM()
+      LIMIT ?
+      `
+    )
+    .all(count) as LinkRecord[];
+}
 export function insertLink(input: {
   url: string;
   title: string;
