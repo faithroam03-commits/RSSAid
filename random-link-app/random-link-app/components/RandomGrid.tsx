@@ -97,20 +97,19 @@ export default function RandomGrid({
         </>
       )}
 <button
+  className="gridSwitchButton"
   onClick={changeGridSize}
-  style={{
-    display: "block",
-    width: "160px",
-    height: "60px",
-    margin: "20px auto",
-    border: "none",
-    borderRadius: "12px",
-    background: "black",
-    color: "white",
-    fontSize: "20px",
-  }}
+  aria-label={`現在${gridSize}分割。表示数を変更`}
+  title={`${gridSize}分割`}
 >
-  GRID-{gridSize}
+  <span
+    className={`gridSwitchIcon gridSwitchIcon${gridSize}`}
+    aria-hidden="true"
+  >
+    {Array.from({ length: gridSize }, (_, index) => (
+      <span key={index} />
+    ))}
+  </span>
 </button>
     </>
   );

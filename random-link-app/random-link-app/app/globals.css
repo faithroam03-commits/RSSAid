@@ -269,3 +269,69 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   text-overflow: ellipsis;
   font-size: 11px;
 }
+/* ===== 画面分割切替ボタン ===== */
+
+.gridSwitchButton {
+  position: fixed;
+  right: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 54px;
+  height: 54px;
+  padding: 0;
+
+  border: none;
+  border-radius: 50%;
+  background: #222;
+  color: #fff;
+
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+}
+
+.gridSwitchButton:active {
+  transform: scale(0.94);
+}
+
+
+/* ボタン内の小さなグリッド */
+
+.gridSwitchIcon {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  gap: 2px;
+}
+
+.gridSwitchIcon span {
+  min-width: 0;
+  min-height: 0;
+  border-radius: 1px;
+  background: #fff;
+}
+
+
+/* 1分割 */
+
+.gridSwitchIcon1 {
+  grid-template-columns: 1fr;
+}
+
+
+/* 4分割 */
+
+.gridSwitchIcon4 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+
+/* 9分割 */
+
+.gridSwitchIcon9 {
+  grid-template-columns: repeat(3, 1fr);
+}
