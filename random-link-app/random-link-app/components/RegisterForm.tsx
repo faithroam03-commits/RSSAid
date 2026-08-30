@@ -3,9 +3,14 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function RegisterForm() {
+export default function RegisterForm({
+  genres,
+}: {
+  genres: string[];
+}) {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [genre, setGenre] = useState("New");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -19,13 +24,21 @@ export default function RegisterForm() {
       const res = await fetch("/api/links", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url })
+
+        body: JSON.stringify({
+  url,
+  genre,
+})
+      
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "登録に失敗しました。");
-      setMessage(`「${data.title}」を新規登録に追加しました。`);
+      setMessage(`「${data.title}」をNewに追加しました。`);
+
       setUrl("");
-      router.refresh();
+setGenre("New");
+router.refresh();
+      
     } catch (e) {
       setError(e instanceof Error ? e.message : "登録に失敗しました。");
     } finally {
@@ -45,13 +58,32 @@ export default function RegisterForm() {
           onChange={(e) => setUrl(e.target.value)}
         />
       </label>
+
+      <label>
+  ジャンル
+  <select
+    value={genre}
+    onChange={(e) => setGenre(e.target.value)}
+  >
+    <option value="New">New</option>
+
+    {genres
+      .filter((g) => g !== "New")
+      .map((g) => (
+        <option key={g} value={g}>
+          {g}
+        </option>
+      ))}
+  </select>
+</label>
+      
       <button className="btn primary" disabled={busy}>
         {busy ? "情報を取得中..." : "URLを登録"}
       </button>
       {message && <div className="notice">{message}</div>}
       {error && <div className="error">{error}</div>}
       <div className="small">
-        タイトルと代表画像を自動取得し、ジャンル「新規登録」に保存します。
+        タイトルと代表画像を自動取得し、ジャンル「New」に保存します。
       </div>
     </form>
   );

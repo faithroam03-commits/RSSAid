@@ -7,7 +7,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const body = await req.json();
     const url = String(body.url || "").trim();
     const title = String(body.title || "").trim();
-    const genre = String(body.genre || "新規登録").trim();
+    const genre = String(body.genre || "New").trim();
     const thumbnailUrl = String(body.thumbnailUrl || "").trim();
 
     if (!url || !title) {

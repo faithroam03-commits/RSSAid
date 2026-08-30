@@ -4,7 +4,15 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LinkRecord } from "@/lib/types";
 
-export default function EditLinkForm({ item }: { item: LinkRecord }) {
+
+export default function EditLinkForm({
+  item,
+  genres,
+}: {
+  item: LinkRecord;
+  genres: string[];
+}) {
+   
   const router = useRouter();
   const [url, setUrl] = useState(item.url);
   const [title, setTitle] = useState(item.title);
@@ -63,9 +71,25 @@ export default function EditLinkForm({ item }: { item: LinkRecord }) {
         <label>サムネイルURL
           <input type="url" value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} />
         </label>
-        <label>ジャンル
-          <input value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="例: ゲーム" />
-        </label>
+        
+        <label>
+  ジャンル
+  <select
+    value={genre}
+    onChange={(e) => setGenre(e.target.value)}
+  >
+    <option value="New">New</option>
+
+    {genres
+      .filter((g) => g !== "New")
+      .map((g) => (
+        <option key={g} value={g}>
+          {g}
+        </option>
+      ))}
+  </select>
+</label>
+        
         <label style={{display:"flex", gridTemplateColumns:"auto 1fr", alignItems:"center", justifyContent:"start"}}>
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
           ランダム表示の対象にする

@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS links (
   url TEXT NOT NULL UNIQUE,
   title TEXT NOT NULL,
   thumbnail_url TEXT,
-  genre TEXT NOT NULL DEFAULT '新規登録',
+  genre TEXT NOT NULL DEFAULT 'New',
   enabled INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -23,6 +23,14 @@ CREATE TABLE IF NOT EXISTS links (
 
 CREATE INDEX IF NOT EXISTS idx_links_genre_enabled
 ON links(genre, enabled);
+CREATE TABLE IF NOT EXISTS genres (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  sort_order INTEGER NOT NULL
+);
+
+INSERT OR IGNORE INTO genres (name, sort_order)
+VALUES ('New', 0);
 `);
 
 export function listLinks(): LinkRecord[] {
@@ -35,11 +43,78 @@ export function getLink(id: number): LinkRecord | undefined {
   return db.prepare("SELECT * FROM links WHERE id = ?").get(id) as LinkRecord | undefined;
 }
 
+db.exec(`
+  INSERT OR IGNORE INTO genres (name, sort_order)
+  SELECT
+    genre,
+    (
+      SELECT COALESCE(MAX(sort_order), 0) + 1
+      FROM genres
+    )
+  FROM links
+  WHERE genre IS NOT NULL
+    AND TRIM(genre) <> ''
+    AND genre <> 'New'
+  GROUP BY genre;
+`);
+
 export function getGenres(): string[] {
-  const rows = db.prepare(
-    "SELECT DISTINCT genre FROM links WHERE enabled = 1 ORDER BY genre COLLATE NOCASE"
-  ).all() as { genre: string }[];
-  return rows.map((r) => r.genre);
+  const rows = db.prepare(`
+    SELECT name
+    FROM genres
+    ORDER BY sort_order ASC, id ASC
+  `).all() as { name: string }[];
+
+  return rows.map((r) => r.name);
+}
+
+export function addGenre(name: string) {
+  const genre = name.trim();
+
+  if (!genre || genre === "New") return;
+
+  const row = db
+    .prepare("SELECT COALESCE(MAX(sort_order), 0) AS maxOrder FROM genres")
+    .get() as { maxOrder: number };
+
+  db.prepare(`
+    INSERT OR IGNORE INTO genres (name, sort_order)
+    VALUES (?, ?)
+  `).run(genre, row.maxOrder + 1);
+}
+
+export function deleteGenre(name: string) {
+  const genre = name.trim();
+
+  if (!genre || genre === "New") return;
+
+  db.prepare(`
+    UPDATE links
+    SET genre = 'New',
+        updated_at = CURRENT_TIMESTAMP
+    WHERE genre = ?
+  `).run(genre);
+
+  db.prepare(`
+    DELETE FROM genres
+    WHERE name = ?
+  `).run(genre);
+}
+
+export function reorderGenres(names: string[]) {
+  const update = db.prepare(`
+    UPDATE genres
+    SET sort_order = ?
+    WHERE name = ?
+  `);
+
+  const transaction = db.transaction((items: string[]) => {
+    items.forEach((name, index) => {
+      update.run(index, name);
+    });
+  });
+
+  transaction(names);
 }
 
 export function randomLink(genre?: string): LinkRecord | undefined {
@@ -87,11 +162,19 @@ export function insertLink(input: {
   url: string;
   title: string;
   thumbnailUrl?: string | null;
+  genre?: string;
 }): number {
+
   const result = db.prepare(`
-    INSERT INTO links (url, title, thumbnail_url, genre)
-    VALUES (?, ?, ?, '新規登録')
-  `).run(input.url, input.title, input.thumbnailUrl ?? null);
+  
+  INSERT INTO links (url, title, thumbnail_url, genre)
+VALUES (?, ?, ?, ?)
+`).run(
+  input.url,
+  input.title,
+  input.thumbnailUrl ?? null,
+  input.genre?.trim() || "New"
+);
   return Number(result.lastInsertRowid);
 }
 
@@ -112,7 +195,7 @@ export function updateLink(input: {
     input.url,
     input.title,
     input.thumbnailUrl || null,
-    input.genre.trim() || "新規登録",
+    input.genre.trim() || "New",
     input.enabled ? 1 : 0,
     input.id
   );
