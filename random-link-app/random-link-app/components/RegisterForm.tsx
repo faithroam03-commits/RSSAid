@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 
 export default function RegisterForm({
   genres,
+  initialUrl = "",
 }: {
   genres: string[];
+  initialUrl?: string;
 }) {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(initialUrl);
   const [busy, setBusy] = useState(false);
   const [genre, setGenre] = useState("New");
   const [message, setMessage] = useState<string | null>(null);
