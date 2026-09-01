@@ -24,6 +24,73 @@ export default function EditLinkForm({
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  async function uploadThumbnail(
+  e: React.ChangeEvent<HTMLInputElement>
+) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    setError("画像ファイルを選択してください。");
+    return;
+  }
+
+  setError(null);
+
+  try {
+    const imageUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      const maxSize = 1200;
+
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxSize || height > maxSize) {
+        const scale = Math.min(
+          maxSize / width,
+          maxSize / height
+        );
+
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        URL.revokeObjectURL(imageUrl);
+        setError("画像の処理に失敗しました。");
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const dataUrl = canvas.toDataURL(
+        "image/jpeg",
+        0.82
+      );
+
+      setThumbnailUrl(dataUrl);
+      URL.revokeObjectURL(imageUrl);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(imageUrl);
+      setError("画像を読み込めませんでした。");
+    };
+
+    img.src = imageUrl;
+  } catch {
+    setError("画像の読み込みに失敗しました。");
+  }
+  }
+  
   async function save(e: FormEvent) {
     e.preventDefault();
     setBusy(true); setMsg(null); setError(null);
@@ -100,13 +167,45 @@ export default function EditLinkForm({
             <img className="mini-thumb" src={thumbnailUrl} alt="" referrerPolicy="no-referrer" />
           </div>
         )}
-        <div className="actions">
-          <button className="btn primary" disabled={busy}>保存</button>
-          <button type="button" className="btn" onClick={scanImages} disabled={busy}>
-            URLから画像候補を取得
-          </button>
-          <a className="btn" href={url} target="_blank" rel="noopener noreferrer">元URLを開く</a>
-        </div>
+        
+<div className="actions">
+  <button
+    className="btn primary"
+    disabled={busy}
+  >
+    保存
+  </button>
+
+  <button
+    type="button"
+    className="btn"
+    onClick={scanImages}
+    disabled={busy}
+  >
+    URLから画像候補を取得
+  </button>
+
+  <label className="btn">
+    端末から画像を選択
+    <input
+      type="file"
+      accept="image/*"
+      onChange={uploadThumbnail}
+      disabled={busy}
+      style={{ display: "none" }}
+    />
+  </label>
+
+  <a
+    className="btn"
+    href={url}
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    元URLを開く
+  </a>
+</div>
+        
         {msg && <div className="notice">{msg}</div>}
         {error && <div className="error">{error}</div>}
       </form>
