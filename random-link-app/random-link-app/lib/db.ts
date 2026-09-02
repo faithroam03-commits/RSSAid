@@ -158,6 +158,20 @@ export function randomLinks(
     )
     .all(count) as LinkRecord[];
 }
+export function getLinkByUrl(url: string) {
+  const row = db
+    .prepare(
+      `
+      SELECT *
+      FROM links
+      WHERE url = ?
+      LIMIT 1
+      `
+    )
+    .get(url);
+
+  return row;
+}
 export function insertLink(input: {
   url: string;
   title: string;
