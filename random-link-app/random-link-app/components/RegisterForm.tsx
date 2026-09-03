@@ -20,7 +20,8 @@ export default function RegisterForm({
   const [previewReady, setPreviewReady] = useState(false);
   const [candidates, setCandidates] = useState<string[]>([]);
   const router = useRouter();
-
+  const [imageFit, setImageFit] = useState<"cover" | "contain">("cover");
+  
   function clearInput() {
   setUrl("");
   setTitle("");
@@ -165,6 +166,7 @@ body: JSON.stringify({
   url,
   title,
   thumbnailUrl,
+  imageFit,
   genre,
 }),
 });
@@ -276,20 +278,44 @@ router.push(`/?genre=${encodeURIComponent(genre)}`);
 </label>
   
 
-    {thumbnailUrl && (
-      <div style={{ marginTop: 16 }}>
-        <div className="small">取得したサムネイル</div>
-        <img
-          src={thumbnailUrl}
-          alt=""
-          style={{
-            width: "100%",
-            maxHeight: 240,
-            objectFit: "contain",
-            marginTop: 8,
-          }}
-        />
+{thumbnailUrl && (
+  <div style={{ marginTop: 16 }}>
+    <div className="small">取得したサムネイル</div>
 
+    <div
+      style={{
+        width: "100%",
+        height: 240,
+        overflow: "hidden",
+        background: "#eee",
+        marginTop: 8,
+      }}
+    >
+      <img
+        src={thumbnailUrl}
+        alt=""
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: imageFit === "contain" ? "contain" : "cover",
+          display: "block",
+        }}
+      />
+    </div>
+        
+<label style={{ marginTop: 16 }}>
+  サムネイルの大きさ:
+  <select
+    value={imageFit}
+    onChange={(e) =>
+      setImageFit(e.target.value as "cover" | "contain")
+    }
+  >
+    <option value="cover">中心を優先</option>
+    <option value="contain">全体を表示</option>
+  </select>
+</label>
+        
   <label className="btn" style={{ marginTop: 16 }}>
   端末から画像を選択
   <input

@@ -181,13 +181,33 @@ export default function EditLinkForm({
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
           ランダム表示の対象にする
         </label>
-        {thumbnailUrl && (
-          <div>
-            <div className="small">現在のサムネイル</div>
-            <img className="mini-thumb" src={thumbnailUrl} alt="" referrerPolicy="no-referrer" />
-          </div>
-        )}
-        
+{thumbnailUrl && (
+  <div>
+    <div className="small">現在のサムネイル</div>
+
+    <div
+      style={{
+        width: "100%",
+        height: 240,
+        overflow: "hidden",
+        background: "#eee",
+        marginTop: 8,
+      }}
+    >
+      <img
+        src={thumbnailUrl}
+        alt=""
+        referrerPolicy="no-referrer"
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: imageFit === "contain" ? "contain" : "cover",
+          display: "block",
+        }}
+      />
+    </div>
+  </div>
+)}
 <div className="actions">
   <button
     className="btn primary"

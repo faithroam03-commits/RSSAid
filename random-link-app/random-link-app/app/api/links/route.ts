@@ -10,6 +10,8 @@ const url = String(body.url || "").trim();
 const genre = String(body.genre || "New").trim() || "New";
 const title = String(body.title || "").trim();
 const thumbnailUrl = String(body.thumbnailUrl || "").trim();
+const imageFit =
+  body.imageFit === "contain" ? "contain" : "cover";
 
 if (!url) {
   return NextResponse.json(
@@ -27,6 +29,7 @@ const id = insertLink({
   url: meta.finalUrl,
   title: finalTitle,
   thumbnailUrl: finalThumbnailUrl,
+  imageFit,
   genre,
 });
 
