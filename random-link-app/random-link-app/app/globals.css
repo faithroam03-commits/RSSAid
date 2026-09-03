@@ -17,8 +17,18 @@ button, input, select { font: inherit; }
 .container { max-width: 1000px; margin: 0 auto; padding: 26px 18px 60px; }
 .hero { display:grid; gap:18px; }
 .card { background:var(--panel); border:1px solid var(--line); border-radius:22px; overflow:hidden; box-shadow: 0 8px 30px rgba(20,25,35,.06); }
-.thumb-wrap { display:block; background:#e8ebf0; aspect-ratio:16/9; overflow:hidden; }
-.thumb { width:100%; height:100%; display:block; object-fit:cover; }
+.thumb-wrap {
+  display: block;
+  background: #e8ebf0;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+.thumb {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
 .no-thumb { width:100%; height:100%; display:grid; place-items:center; color:var(--muted); font-weight:700; }
 .card-body { padding:20px; }
 .card-title { margin:0 0 8px; font-size:clamp(22px,4vw,34px); line-height:1.25; }
@@ -208,7 +218,7 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
 
 /* 4分割 */
 .grid4 .gridThumbFrame {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 4 / 3;
 }
 
 /* 9分割 */
@@ -240,27 +250,18 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   padding: 8px;
 }
 
-.gridGenre {
-  margin-bottom: 3px;
-  color: #777;
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .gridTitle {
   overflow: hidden;
   font-weight: 700;
   line-height: 1.3;
 }
 
-/* 4分割はタイトル2行まで */
+/* 4分割はタイトル1行 */
 .grid4 .gridTitle {
-  display: -webkit-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 14px;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
 }
 
 /* 9分割はタイトルをさらに小さく・1行だけ */

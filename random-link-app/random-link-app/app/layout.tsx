@@ -1,5 +1,4 @@
 import "./globals.css";
-import Link from "next/link";
 import Menu from "@/components/Menu";
 import type { ReactNode } from "react";
 
@@ -19,9 +18,9 @@ export default function RootLayout({
         <header className="header">
           <Menu />
 
-          <Link href="/" className="brand">
-            Random Link
-          </Link>
+          <div className="brand" aria-label="Random Link">
+            RandomLink
+          </div>
         </header>
 
         <main className="container">{children}</main>

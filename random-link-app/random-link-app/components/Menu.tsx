@@ -18,7 +18,12 @@ export default function Menu() {
         ☰
       </summary>
 
-      <nav className="menuPanel">
+     <nav className="menuPanel">
+
+      <Link href="/" onClick={closeMenu}>
+       トップ
+      </Link>
+      
         <Link href="/register" onClick={closeMenu}>
           ＋ 登録
         </Link>

@@ -80,7 +80,7 @@ export default function RandomGrid({
   )}
 </div>
                 <div className="gridCardBody">
-                  <div className="gridGenre">{item.genre}</div>
+                  
                   <div className="gridTitle">{item.title}</div>
                 </div>
               </a>

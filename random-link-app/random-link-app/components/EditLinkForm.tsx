@@ -132,12 +132,29 @@ export default function EditLinkForm({
         <label>URL
           <input type="url" required value={url} onChange={(e) => setUrl(e.target.value)} />
         </label>
-        <label>タイトル
-          <input required value={title} onChange={(e) => setTitle(e.target.value)} />
-        </label>
-        <label>サムネイルURL
-          <input type="url" value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} />
-        </label>
+<label>
+  タイトル
+
+  <div style={{ display: "flex", gap: 8 }}>
+    <input
+      type="text"
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+      style={{ flex: 1 }}
+    />
+
+    {title && (
+      <button
+        type="button"
+        className="btn"
+        onClick={() => setTitle("")}
+        aria-label="タイトルを削除"
+      >
+        ×
+      </button>
+    )}
+  </div>
+</label>
         
         <label>
   ジャンル
