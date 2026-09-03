@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS links (
   url TEXT NOT NULL UNIQUE,
   title TEXT NOT NULL,
   thumbnail_url TEXT,
+  image_fit TEXT NOT NULL DEFAULT 'cover',
   genre TEXT NOT NULL DEFAULT 'New',
   enabled INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -32,6 +33,15 @@ CREATE TABLE IF NOT EXISTS genres (
 INSERT OR IGNORE INTO genres (name, sort_order)
 VALUES ('New', 0);
 `);
+
+try {
+  db.exec(`
+    ALTER TABLE links
+    ADD COLUMN image_fit TEXT NOT NULL DEFAULT 'cover'
+  `);
+} catch {
+  // すでに image_fit 列がある場合は何もしない
+}
 
 export function listLinks(): LinkRecord[] {
   return db.prepare(
@@ -172,23 +182,33 @@ export function getLinkByUrl(url: string) {
 
   return row;
 }
+
 export function insertLink(input: {
   url: string;
   title: string;
   thumbnailUrl?: string | null;
+  imageFit?: "cover" | "contain";
   genre?: string;
 }): number {
+  const result = db
+    .prepare(`
+      INSERT INTO links (
+        url,
+        title,
+        thumbnail_url,
+        image_fit,
+        genre
+      )
+      VALUES (?, ?, ?, ?, ?)
+    `)
+    .run(
+      input.url,
+      input.title,
+      input.thumbnailUrl ?? null,
+      input.imageFit ?? "cover",
+      input.genre?.trim() || "New"
+    );
 
-  const result = db.prepare(`
-  
-  INSERT INTO links (url, title, thumbnail_url, genre)
-VALUES (?, ?, ?, ?)
-`).run(
-  input.url,
-  input.title,
-  input.thumbnailUrl ?? null,
-  input.genre?.trim() || "New"
-);
   return Number(result.lastInsertRowid);
 }
 
@@ -197,18 +217,26 @@ export function updateLink(input: {
   url: string;
   title: string;
   thumbnailUrl?: string | null;
+  imageFit: "cover" | "contain";
   genre: string;
   enabled: boolean;
 }) {
   db.prepare(`
     UPDATE links
-    SET url = ?, title = ?, thumbnail_url = ?, genre = ?, enabled = ?,
-        updated_at = CURRENT_TIMESTAMP
+    SET
+      url = ?,
+      title = ?,
+      thumbnail_url = ?,
+      image_fit = ?,
+      genre = ?,
+      enabled = ?,
+      updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(
     input.url,
     input.title,
-    input.thumbnailUrl || null,
+    input.thumbnailUrl ?? null,
+    input.imageFit,
     input.genre.trim() || "New",
     input.enabled ? 1 : 0,
     input.id

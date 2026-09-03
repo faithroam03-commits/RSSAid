@@ -3,6 +3,7 @@ export type LinkRecord = {
   url: string;
   title: string;
   thumbnail_url: string | null;
+  image_fit: "cover" | "contain";
   genre: string;
   enabled: number;
   created_at: string;

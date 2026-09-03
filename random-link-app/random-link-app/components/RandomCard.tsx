@@ -31,12 +31,15 @@ return (
         rel="noopener noreferrer"
       >
         {item.thumbnail_url ? (
-          <img
-            className="thumb"
-            src={item.thumbnail_url}
-            alt=""
-            referrerPolicy="no-referrer"
-          />
+<img
+  className="thumb"
+  src={item.thumbnail_url}
+  alt=""
+  referrerPolicy="no-referrer"
+  style={{
+    objectFit: item.image_fit === "contain" ? "contain" : "cover",
+  }}
+/>
         ) : (
           <div className="no-thumb">NO IMAGE</div>
         )}

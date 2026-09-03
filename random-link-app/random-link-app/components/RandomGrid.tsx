@@ -70,11 +70,14 @@ export default function RandomGrid({
 
 <div className="gridThumbFrame">
   {item.thumbnail_url ? (
-    <img
-      src={item.thumbnail_url}
-      alt=""
-      className="gridThumb"
-    />
+<img
+  className="gridThumb"
+  src={item.thumbnail_url}
+  alt=""
+  style={{
+    objectFit: item.image_fit === "contain" ? "contain" : "cover",
+  }}
+/>
   ) : (
     <div className="gridNoThumb">NO IMAGE</div>
   )}

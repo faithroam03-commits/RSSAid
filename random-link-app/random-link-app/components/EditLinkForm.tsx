@@ -17,6 +17,9 @@ export default function EditLinkForm({
   const [url, setUrl] = useState(item.url);
   const [title, setTitle] = useState(item.title);
   const [thumbnailUrl, setThumbnailUrl] = useState(item.thumbnail_url || "");
+  const [imageFit, setImageFit] = useState<"cover" | "contain">(
+  item.image_fit || "cover"
+);
   const [genre, setGenre] = useState(item.genre);
   const [enabled, setEnabled] = useState(Boolean(item.enabled));
   const [candidates, setCandidates] = useState<string[]>([]);
@@ -98,12 +101,12 @@ export default function EditLinkForm({
       const res = await fetch(`/api/links/${item.id}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url, title, thumbnailUrl, genre, enabled })
+        body: JSON.stringify({ imageFit,url, title, thumbnailUrl, genre, enabled })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "保存に失敗しました。");
       setMsg("保存しました。");
-      router.refresh();
+      router.push("/admin");
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました。");
     } finally {
@@ -193,6 +196,15 @@ export default function EditLinkForm({
     保存
   </button>
 
+  <a
+    className="btn"
+    href={url}
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    元URLを開く
+  </a>
+  
   <button
     type="button"
     className="btn"
@@ -213,15 +225,21 @@ export default function EditLinkForm({
     />
   </label>
 
-  <a
-    className="btn"
-    href={url}
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    元URLを開く
-  </a>
 </div>
+
+  <label>
+  サムネイルの大きさ:
+  <select
+    value={imageFit}
+    onChange={(e) =>
+      setImageFit(e.target.value as "cover" | "contain")
+    }
+  >
+    <option value="cover">中心を優先</option>
+    <option value="contain">全体を表示</option>
+  </select>
+</label>
+        
         
         {msg && <div className="notice">{msg}</div>}
         {error && <div className="error">{error}</div>}

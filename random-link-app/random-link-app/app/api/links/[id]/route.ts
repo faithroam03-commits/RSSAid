@@ -5,6 +5,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const body = await req.json();
+    const imageFit =
+  body.imageFit === "contain" ? "contain" : "cover";
     const url = String(body.url || "").trim();
     const title = String(body.title || "").trim();
     const genre = String(body.genre || "New").trim();
@@ -19,12 +21,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     updateLink({
-      id: Number(id),
-      url,
-      title,
-      thumbnailUrl: thumbnailUrl || null,
-      genre,
-      enabled: Boolean(body.enabled)
+  id: Number(id),
+  url,
+  title,
+  thumbnailUrl: thumbnailUrl || null,
+  imageFit,
+  genre,
+  enabled: Boolean(body.enabled),
     });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
