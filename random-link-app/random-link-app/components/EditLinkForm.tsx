@@ -271,7 +271,7 @@ export default function EditLinkForm({
           <p className="small">画像を押すとサムネイルURL欄へセットします。最後に「保存」を押してください。</p>
           <div className="image-grid">
             {candidates.map((src) => (
-              <button key={src} className="image-choice" type="button" onClick={() => setThumbnailUrl(src)}>
+             <button key={src} className={thumbnailUrl === src ? "image-choice selected" : "image-choice"} type="button" onClick={() => setThumbnailUrl(src)}>
                 <img src={src} alt="" referrerPolicy="no-referrer" />
               </button>
             ))}

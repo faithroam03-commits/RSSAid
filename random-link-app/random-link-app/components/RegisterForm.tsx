@@ -302,7 +302,16 @@ router.push(`/?genre=${encodeURIComponent(genre)}`);
         }}
       />
     </div>
-        
+
+        <button
+      type="submit"
+      className="btn primary"
+      disabled={busy}
+      style={{ marginTop: 16 }}
+    >
+      URLを登録
+    </button>
+    
 <label style={{ marginTop: 16 }}>
   サムネイルの大きさ:
   <select
@@ -339,7 +348,11 @@ router.push(`/?genre=${encodeURIComponent(genre)}`);
         <button
           key={src}
           type="button"
-          className="image-choice"
+          className={
+            thumbnailUrl === src
+            ? "image-choice selected"
+            : "image-choice"
+          }
           onClick={() => setThumbnailUrl(src)}
         >
           <img
@@ -353,14 +366,6 @@ router.push(`/?genre=${encodeURIComponent(genre)}`);
   </div>
 )}
     
-    <button
-      type="submit"
-      className="btn primary"
-      disabled={busy}
-      style={{ marginTop: 16 }}
-    >
-      URLを登録
-    </button>
   </div>
 )}
       
