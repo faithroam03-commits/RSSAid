@@ -159,22 +159,39 @@ export default function EditLinkForm({
   </div>
 </label>
         
-        <label>
+<label>
   ジャンル
-  <select
-    value={genre}
-    onChange={(e) => setGenre(e.target.value)}
-  >
-    <option value="New">New</option>
 
-    {genres
-      .filter((g) => g !== "New")
-      .map((g) => (
-        <option key={g} value={g}>
-          {g}
-        </option>
-      ))}
-  </select>
+  <details className="genreSelect">
+    <summary>{genre || "選択してください"}</summary>
+
+    <div className="genreSelectList">
+      <button
+        type="button"
+        onClick={(e) => {
+          setGenre("New");
+          e.currentTarget.closest("details")?.removeAttribute("open");
+        }}
+      >
+        New
+      </button>
+
+      {genres
+        .filter((g) => g !== "New")
+        .map((g) => (
+          <button
+            key={g}
+            type="button"
+            onClick={(e) => {
+              setGenre(g);
+              e.currentTarget.closest("details")?.removeAttribute("open");
+            }}
+          >
+            {g}
+          </button>
+        ))}
+    </div>
+  </details>
 </label>
         
         <label style={{display:"flex", gridTemplateColumns:"auto 1fr", alignItems:"center", justifyContent:"start"}}>

@@ -202,6 +202,58 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   background: #222;
 }
 
+.genreSelect {
+  width: 100%;
+}
+
+.genreSelect summary {
+  list-style: none;
+  padding: 12px 14px;
+  border: 1px solid #cfd4dc;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.genreSelect summary::-webkit-details-marker {
+  display: none;
+}
+
+.genreSelect summary::after {
+  content: "⌄";
+  float: right;
+}
+
+.genreSelect[open] summary::after {
+  content: "⌃";
+}
+
+.genreSelectList {
+  margin-top: 4px;
+  border: 1px solid #cfd4dc;
+  border-radius: 10px;
+  overflow-y: auto;
+  background: #fff;
+
+  max-height: 220px;
+}
+
+.genreSelectList button {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+  text-align: left;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.genreSelectList button:last-child {
+  border-bottom: 0;
+}
 /* ===== Random Grid ===== */
 
 .randomGrid {
