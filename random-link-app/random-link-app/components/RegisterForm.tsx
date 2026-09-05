@@ -21,6 +21,43 @@ export default function RegisterForm({
   const [candidates, setCandidates] = useState<string[]>([]);
   const router = useRouter();
   const [imageFit, setImageFit] = useState<"cover" | "contain">("cover");
+  const [showGenreAdd, setShowGenreAdd] = useState(false);
+  const [newGenre, setNewGenre] = useState("");
+
+async function addNewGenre() {
+  const name = newGenre.trim();
+
+  if (!name) return;
+
+  if (genres.includes(name)) {
+    alert("同じ名前のジャンルがすでにあります。");
+    return;
+  }
+
+  const res = await fetch("/api/genres", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "add",
+      name,
+    }),
+  });
+
+  if (!res.ok) {
+    alert("ジャンルの追加に失敗しました。");
+    return;
+  }
+
+setGenres((prev) => [...prev, name]);
+setGenre(name);
+
+await submit(undefined, name);
+
+setNewGenre("");
+setShowGenreAdd(false);
+}
   
   function clearInput() {
   setUrl("");
@@ -156,20 +193,44 @@ async function submit(e: FormEvent) {
   setError(null);
   setMessage(null);
 
-  try {
-    const res = await fetch("/api/links", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-body: JSON.stringify({
-  url,
-  title,
-  thumbnailUrl,
-  imageFit,
-  genre,
-}),
-});
+try {
+  let finalGenre = genre;
+  const name = newGenre.trim();
+
+  if (showGenreAdd && name) {
+    if (!genres.includes(name)) {
+      const genreRes = await fetch("/api/genres", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "add",
+          name,
+        }),
+      });
+
+      if (!genreRes.ok) {
+        throw new Error("ジャンルの追加に失敗しました。");
+      }
+    }
+
+    finalGenre = name;
+  }
+
+  const res = await fetch("/api/links", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      url,
+      title,
+      thumbnailUrl,
+      imageFit,
+      genre: finalGenre,
+    }),
+  });
     
     const data = await res.json();
 
@@ -179,21 +240,20 @@ body: JSON.stringify({
       );
     }
 
-setMessage(`「${data.title}」を${genre}に追加しました。`);
+setMessage(`「${data.title}」を${finalGenre}に追加しました。`);
 
-router.push(`/?genre=${encodeURIComponent(genre)}`);
+router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
      
-  } catch (e) {
-    setError(
-      e instanceof Error
-        ? e.message
-        : "登録に失敗しました。"
-    );
-  } finally {
-    setBusy(false);
-  }
+} catch (e) {
+  setError(
+    e instanceof Error
+      ? e.message
+      : "登録に失敗しました。"
+  );
+} finally {
+  setBusy(false);
 }
-
+}
   return (
     <form className="panel form" onSubmit={submit}>
       <label>
@@ -223,6 +283,7 @@ router.push(`/?genre=${encodeURIComponent(genre)}`);
         
       </label>
 
+{!showGenreAdd && (
 <label>
   ジャンル
   <select
@@ -240,6 +301,36 @@ router.push(`/?genre=${encodeURIComponent(genre)}`);
       ))}
   </select>
 </label>
+)}
+
+<button
+  type="button"
+  onClick={() => {
+  if (showGenreAdd) {
+    setNewGenre("");
+  }
+  setShowGenreAdd(!showGenreAdd);
+}}
+>
+  ＋ 新規ジャンル
+</button>
+
+{showGenreAdd && (
+  <div>
+    <input
+      type="text"
+      value={newGenre}
+      onChange={(e) => setNewGenre(e.target.value)}
+      placeholder="ジャンル名"
+    />
+
+<div className="small">
+  {newGenre.trim()
+    ? `ジャンル「${newGenre.trim()}」を新規作成して登録`
+    : "ジャンル名を入力してください"}
+</div>
+  </div>
+)}
       
      <button
   type="button"
@@ -311,6 +402,8 @@ router.push(`/?genre=${encodeURIComponent(genre)}`);
     >
       URLを登録
     </button>
+
+    {error && <div className="error">{error}</div>}
     
 <label style={{ marginTop: 16 }}>
   サムネイルの大きさ:
@@ -369,11 +462,11 @@ router.push(`/?genre=${encodeURIComponent(genre)}`);
   </div>
 )}
       
-      {message && <div className="notice">{message}</div>}
-      {error && <div className="error">{error}</div>}
-      <div className="small">
-        タイトルと代表画像を自動取得し、ジャンル「New」に保存します。
-      </div>
+ {message && <div className="notice">{message}</div>}
+
+<div className="small">
+  タイトルと代表画像を自動取得し、ジャンル「New」に保存します。
+</div>
     </form>
   );
 }

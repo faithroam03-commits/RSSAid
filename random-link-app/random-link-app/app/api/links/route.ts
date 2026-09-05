@@ -4,6 +4,7 @@ import { fetchPageMetadata } from "@/lib/fetch-metadata";
 
 export async function POST(req: Request) {
   try {
+    
 const body = await req.json();
 
 const url = String(body.url || "").trim();

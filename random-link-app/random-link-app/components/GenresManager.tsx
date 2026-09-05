@@ -111,7 +111,15 @@ async function remove(name: string) {
               <>
 <button
   type="button"
-  onClick={() => remove(genre)}
+  onClick={() => {
+const ok = window.confirm(
+  `「${genre}」を削除しますか？\n\nこのジャンルに登録されているURLはNewへ移動します。`
+);
+
+  if (ok) {
+    remove(genre);
+  }
+}}
 >
   削除
 </button>
