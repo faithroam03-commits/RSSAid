@@ -54,8 +54,10 @@ export default function RandomGrid({
 
   return (
     <>
+      <div className="randomStage">
+        
       {gridSize === 1 ? (
-        <RandomCard item={visibleItems[0]} genre={genre} />
+<RandomCard item={visibleItems[0]} />
       ) : (
         <>
         
@@ -96,17 +98,19 @@ export default function RandomGrid({
                 </div>
               </a>
             ))}
-          </section>
-)}
-          <button
-            className="gridRefreshButton"
-            onClick={refresh}
-            aria-label="別のページを表示"
-          >
-            ↻
-          </button>
+         </section>
+        )}
         </>
       )}
+        </div>
+<button
+  className="gridRefreshButton"
+  onClick={refresh}
+  aria-label="別のページを表示"
+>
+  ↻ 別のページ
+</button>
+
 <button
   className="gridSwitchButton"
   onClick={changeGridSize}
