@@ -302,6 +302,7 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
 /* 9分割はタイトルをさらに小さく・1行だけ */
 .grid9 .gridTitle {
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
   font-size: 11px;
 }
