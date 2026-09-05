@@ -9,7 +9,10 @@ export default function GenresManager({
 }) {
   const [items, setItems] = useState(genres);
   const [newGenre, setNewGenre] = useState("");
-
+  const [genreMessage, setGenreMessage] = useState("");
+  const [genreMessageType, setGenreMessageType] =
+  useState<"success" | "error" | null>(null);
+  
 async function move(index: number, direction: -1 | 1) {
   const target = index + direction;
 
@@ -32,10 +35,16 @@ async function move(index: number, direction: -1 | 1) {
   });
 }
 
-  async function add() {
+async function add() {
   const name = newGenre.trim();
 
-  if (!name || name === "New" || items.includes(name)) return;
+  if (!name) return;
+
+  if (name === "New" || items.includes(name)) {
+setGenreMessage(`「${name}」は既に登録されています。`);
+setGenreMessageType("error");
+return;
+  }
 
   await fetch("/api/genres", {
     method: "POST",
@@ -50,6 +59,8 @@ async function move(index: number, direction: -1 | 1) {
 
   setItems([...items, name]);
   setNewGenre("");
+  setGenreMessage(`「${name}」を追加しました。`);
+  setGenreMessageType("success");
 }
 
 async function remove(name: string) {
@@ -89,7 +100,14 @@ async function remove(name: string) {
       </button>
         
       </div>
-
+{genreMessage && (
+  <div
+    className={genreMessageType === "error" ? "error" : "notice"}
+    style={{ marginBottom: "16px" }}
+  >
+    {genreMessage}
+  </div>
+)}
       <div>
         {items.map((genre, index) => (
           <div

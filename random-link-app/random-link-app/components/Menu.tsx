@@ -48,7 +48,7 @@ export default function Menu() {
         </Link>
 
         <Link href="/admin" onClick={closeMenu}>
-          URL管理
+          URLメンテナンス
         </Link>
 
         <Link href="/genres" onClick={closeMenu}>
