@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export default function Menu() {
   const detailsRef = useRef<HTMLDetailsElement>(null);
@@ -12,6 +12,25 @@ export default function Menu() {
     }
   };
 
+  useEffect(() => {
+  const handlePointerDown = (event: PointerEvent) => {
+    const details = detailsRef.current;
+
+    if (
+      details &&
+      details.open &&
+      !details.contains(event.target as Node)
+    ) {
+      details.open = false;
+    }
+  };
+
+  document.addEventListener("pointerdown", handlePointerDown);
+
+  return () => {
+    document.removeEventListener("pointerdown", handlePointerDown);
+  };
+}, []);
   return (
     <details ref={detailsRef} className="menu">
       <summary className="menuButton" aria-label="メニューを開く">
@@ -25,7 +44,7 @@ export default function Menu() {
       </Link>
       
         <Link href="/register" onClick={closeMenu}>
-          ＋ 登録
+          新規URL登録
         </Link>
 
         <Link href="/admin" onClick={closeMenu}>

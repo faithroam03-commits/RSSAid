@@ -28,7 +28,7 @@ const initialUrl = urlMatch ? urlMatch[0] : "";
 
   return (
     <>
-      <h1>URL登録</h1>
+      <h1>新規URL登録</h1>
       <RegisterForm
         genres={genres}
         initialUrl={initialUrl}

@@ -150,7 +150,13 @@ async function uploadThumbnail(
     setError("画像の読み込みに失敗しました。");
   }
 }
+  
 async function fetchMetadata() {
+  if (!url.trim()) {
+    setError("URLを入力してください。");
+    return;
+  }
+
   setBusy(true);
   setError(null);
   setMessage(null);
@@ -177,15 +183,26 @@ setTitle(data.title || "");
 setThumbnailUrl(data.thumbnailUrl || "");
 setCandidates(data.images || []);
 setPreviewReady(true);
-  } catch (e) {
-    setError(
-      e instanceof Error
-        ? e.message
-        : "ページ情報の取得に失敗しました。"
-    );
-  } finally {
-    setBusy(false);
-  }
+} catch (e) {
+  const message =
+    e instanceof Error
+      ? e.message
+      : "ページ情報の取得に失敗しました。";
+
+  const isNetworkError =
+    message === "fetch failed" ||
+    message.includes("ENOTFOUND") ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("ETIMEDOUT");
+
+  setError(
+    isNetworkError
+      ? "ページ情報を取得できませんでした。URLを確認してください。"
+      : message
+  );
+} finally {
+  setBusy(false);
+}
 }
 async function submit(e: FormEvent) {
   e.preventDefault();
@@ -332,14 +349,18 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
   </div>
 )}
       
-     <button
+  <button
   type="button"
   className="btn primary"
-  disabled={busy || !url}
+  disabled={busy}
   onClick={fetchMetadata}
 >
- {busy ? "情報を取得中..." : "情報を取得"}
+  {busy ? "情報を取得中..." : "情報を取得"}
 </button>
+
+{error && !previewReady && (
+  <div className="error">{error}</div>
+)}
 
       {previewReady && (
   <div className="panel" style={{ marginTop: 20 }}>
@@ -464,9 +485,6 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
       
  {message && <div className="notice">{message}</div>}
 
-<div className="small">
-  タイトルと代表画像を自動取得し、ジャンル「New」に保存します。
-</div>
     </form>
   );
 }

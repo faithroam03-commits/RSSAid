@@ -58,15 +58,23 @@ export default function RandomGrid({
         <RandomCard item={visibleItems[0]} genre={genre} />
       ) : (
         <>
-          <section className={`randomGrid grid${gridSize}`}>
-            {visibleItems.map((item) => (
-              <a
-                key={item.id}
-                href={item.url}
-                className="gridCard"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+        
+{visibleItems.length === 0 ? (
+  <div className="emptyCard">
+  <div className="panel empty">
+  表示できるURLがまだありません。
+</div>
+</div>
+) : (
+  <section className={`randomGrid grid${gridSize}`}>
+    {visibleItems.map((item) => (
+      <a
+        key={item.id}
+        href={item.url}
+        className="gridCard"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
 
 <div className="gridThumbFrame">
   {item.thumbnail_url ? (
@@ -89,7 +97,7 @@ export default function RandomGrid({
               </a>
             ))}
           </section>
-
+)}
           <button
             className="gridRefreshButton"
             onClick={refresh}
