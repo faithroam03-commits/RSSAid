@@ -301,23 +301,40 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
       </label>
 
 {!showGenreAdd && (
-<label>
-  ジャンル
-  <select
-    value={genre}
-    onChange={(e) => setGenre(e.target.value)}
-  >
-    <option value="New">New</option>
+  <label>
+    ジャンル
 
-    {genres
-      .filter((g) => g !== "New")
-      .map((g) => (
-        <option key={g} value={g}>
-          {g}
-        </option>
-      ))}
-  </select>
-</label>
+    <details className="genreSelect">
+      <summary>{genre || "選択してください"}</summary>
+
+      <div className="genreSelectList">
+        <button
+          type="button"
+          onClick={(e) => {
+            setGenre("New");
+            e.currentTarget.closest("details")?.removeAttribute("open");
+          }}
+        >
+          New
+        </button>
+
+        {genres
+          .filter((g) => g !== "New")
+          .map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={(e) => {
+                setGenre(g);
+                e.currentTarget.closest("details")?.removeAttribute("open");
+              }}
+            >
+              {g}
+            </button>
+          ))}
+      </div>
+    </details>
+  </label>
 )}
 
 <button
@@ -349,9 +366,9 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
   </div>
 )}
       
-  <button
+<button
   type="button"
-  className="btn primary"
+  className={`btn ${previewReady ? "" : "primary"}`}
   disabled={busy}
   onClick={fetchMetadata}
 >
@@ -362,7 +379,7 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
   <div className="error">{error}</div>
 )}
 
-      {previewReady && (
+{previewReady && (
   <div className="panel" style={{ marginTop: 20 }}>
 
 <label>
