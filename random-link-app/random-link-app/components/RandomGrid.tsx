@@ -68,7 +68,11 @@ export default function RandomGrid({
 </div>
 </div>
 ) : (
-  <section className={`randomGrid grid${gridSize}`}>
+<section
+  className={`randomGrid grid${gridSize} ${
+    visibleItems.length === 1 ? "singleItemGrid" : ""
+  }`}
+>
     {visibleItems.map((item) => (
       <a
         key={item.id}

@@ -244,6 +244,16 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   background: #eee;
 }
 
+.singleItemGrid {
+  display: flex;
+  justify-content: center;
+}
+
+.singleItemGrid .gridCard {
+  width: 100%;
+  max-width: 320px;
+}
+
 /* 4分割 */
 .grid4 .gridThumbFrame {
   aspect-ratio: 4 / 3;
@@ -270,6 +280,11 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   background: #eee;
   color: #888;
   font-size: 12px;
+}
+
+/* 1件だけの場合は4/9分割で同じ比率 */
+.singleItemGrid .gridThumbFrame {
+  aspect-ratio: 4 / 3;
 }
 
 /* 文字部分 */
