@@ -349,3 +349,39 @@ export async function moveClientGenre(
 
   await tx.done;
 }
+
+export async function getClientLink(id: number) {
+  const db = await getClientDb();
+  return db.get("links", id);
+}
+
+export async function getRandomClientLinks(
+  count: number,
+  genre?: string
+) {
+  const db = await getClientDb();
+
+  const allLinks = await db.getAll("links");
+
+  const filtered = allLinks.filter((item) => {
+    if (item.enabled !== 1) {
+      return false;
+    }
+
+    if (genre && genre !== "ALL") {
+      return item.genre === genre;
+    }
+
+    return true;
+  });
+
+  for (let i = filtered.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [filtered[i], filtered[j]] = [
+      filtered[j],
+      filtered[i],
+    ];
+  }
+
+  return filtered.slice(0, count);
+}

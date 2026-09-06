@@ -12,6 +12,7 @@ import {
   insertClientLink,
   moveClientGenre,
   updateClientLink,
+  getRandomClientLinks,
 } from "@/lib/client-db";
 
 export default function IdbTestPage() {
@@ -19,6 +20,9 @@ export default function IdbTestPage() {
   const [error, setError] = useState<string | null>(null);
   const [links, setLinks] = useState<
   Awaited<ReturnType<typeof getClientLinks>>
+>([]);
+  const [randomLinks, setRandomLinks] = useState<
+  Awaited<ReturnType<typeof getRandomClientLinks>>
 >([]);
 
   useEffect(() => {
@@ -44,11 +48,13 @@ if (!hasRealTest) {
   });
 }
 
-    const genreItems = await getClientGenres();
-    const linkItems = await getClientLinks();
+const genreItems = await getClientGenres();
+const linkItems = await getClientLinks();
+const randomItems = await getRandomClientLinks(2);
 
-    setGenres(genreItems);
-    setLinks(linkItems);
+setGenres(genreItems);
+setLinks(linkItems);
+setRandomLinks(randomItems);
   } catch (e) {
     setError(
       e instanceof Error
@@ -152,16 +158,17 @@ async function testDeleteLink() {
     );
   }
 }
-
   async function testDeleteGenre() {
   try {
     await deleteClientGenre("テストジャンル");
 
-    const genreItems = await getClientGenres();
-    const linkItems = await getClientLinks();
+const genreItems = await getClientGenres();
+const linkItems = await getClientLinks();
+const randomItems = await getRandomClientLinks(2);
 
-    setGenres(genreItems);
-    setLinks(linkItems);
+setGenres(genreItems);
+setLinks(linkItems);
+setRandomLinks(randomItems);
 
     alert("ジャンルを削除しました。");
   } catch (e) {
@@ -256,6 +263,16 @@ async function testDeleteLink() {
   ))}
 </ul>
 
+             <p>ランダム取得:</p>
+
+<ul>
+  {randomLinks.map((item) => (
+    <li key={item.id}>
+      {item.title} - {item.url}
+    </li>
+  ))}
+</ul>
+          
           <button
   type="button"
   className="btn"
