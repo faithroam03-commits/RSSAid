@@ -16,7 +16,7 @@ export default async function Home({
   const selectedGenre = params.genre;
   const genres = getGenres();
 
-  const items = randomLinks(9, selectedGenre);
+const items = randomLinks(30, selectedGenre);
 
   return (
     <>

@@ -50,16 +50,16 @@ export default function RandomGrid({
     router.refresh();
   };
 
-  const visibleItems = items.slice(0, gridSize);
+  const visibleCount =
+  gridSize === 1 ? 9 :
+  gridSize === 4 ? 16 :
+  30;
+
+const visibleItems = items.slice(0, visibleCount);
 
   return (
     <>
       <div className="randomStage">
-        
-      {gridSize === 1 ? (
-<RandomCard item={visibleItems[0]} />
-      ) : (
-        <>
         
 {visibleItems.length === 0 ? (
   <div className="emptyCard">
@@ -103,8 +103,6 @@ export default function RandomGrid({
               </a>
             ))}
          </section>
-        )}
-        </>
       )}
         </div>
 <button
