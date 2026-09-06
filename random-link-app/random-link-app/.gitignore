@@ -5,3 +5,4 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 THIS_IS_TERMUX_PROJECT.txt
+tsconfig.tsbuildinfo
