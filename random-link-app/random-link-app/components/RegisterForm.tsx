@@ -24,41 +24,6 @@ export default function RegisterForm({
   const [showGenreAdd, setShowGenreAdd] = useState(false);
   const [newGenre, setNewGenre] = useState("");
 
-async function addNewGenre() {
-  const name = newGenre.trim();
-
-  if (!name) return;
-
-  if (genres.includes(name)) {
-    alert("同じ名前のジャンルがすでにあります。");
-    return;
-  }
-
-  const res = await fetch("/api/genres", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      action: "add",
-      name,
-    }),
-  });
-
-  if (!res.ok) {
-    alert("ジャンルの追加に失敗しました。");
-    return;
-  }
-
-setGenres((prev) => [...prev, name]);
-setGenre(name);
-
-await submit(undefined, name);
-
-setNewGenre("");
-setShowGenreAdd(false);
-}
-  
   function clearInput() {
   setUrl("");
   setTitle("");

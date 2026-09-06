@@ -13,7 +13,7 @@ export default async function GenrePage({
   return (
     <>
       <h1>{decoded}</h1>
-      <RandomCard item={randomLink(decoded)} genre={decoded} />
+      <RandomCard item={randomLink(decoded)} />
     </>
   );
 }
