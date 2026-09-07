@@ -11,10 +11,12 @@ import {
 
 type Props = {
   selectedGenre?: string;
+  refreshKey?: string;
 };
 
 export default function HomeClient({
   selectedGenre,
+  refreshKey,
 }: Props) {
   const [genres, setGenres] = useState<string[]>([]);
   const [items, setItems] = useState<
@@ -36,7 +38,7 @@ export default function HomeClient({
     }
 
     load();
-  }, [selectedGenre]);
+}, [selectedGenre, refreshKey]);
 
   if (loading) {
     return null;

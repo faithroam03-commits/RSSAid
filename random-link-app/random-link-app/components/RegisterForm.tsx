@@ -2,6 +2,10 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  insertClientGenre,
+  insertClientLink,
+} from "@/lib/client-db";
 
 export default function RegisterForm({
   genres,
@@ -179,50 +183,20 @@ try {
   let finalGenre = genre;
   const name = newGenre.trim();
 
-  if (showGenreAdd && name) {
-    if (!genres.includes(name)) {
-      const genreRes = await fetch("/api/genres", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "add",
-          name,
-        }),
-      });
+if (showGenreAdd && name) {
+  await insertClientGenre(name);
+  finalGenre = name;
+}
 
-      if (!genreRes.ok) {
-        throw new Error("ジャンルの追加に失敗しました。");
-      }
-    }
+await insertClientLink({
+  url,
+  title,
+  thumbnailUrl,
+  imageFit,
+  genre: finalGenre,
+});
 
-    finalGenre = name;
-  }
-
-  const res = await fetch("/api/links", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      url,
-      title,
-      thumbnailUrl,
-      imageFit,
-      genre: finalGenre,
-    }),
-  });
-    
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(
-        data.error || "登録に失敗しました。"
-      );
-    }
-
-setMessage(`「${data.title}」を${finalGenre}に追加しました。`);
+setMessage(`「${title}」を${finalGenre}に追加しました。`);
 
 router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
      

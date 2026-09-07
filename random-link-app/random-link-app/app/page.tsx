@@ -14,8 +14,9 @@ export default async function Home({
   const selectedGenre = params.genre;
 
   return (
-    <HomeClient
-      selectedGenre={selectedGenre}
-    />
-  );
+  <HomeClient
+    selectedGenre={selectedGenre}
+    refreshKey={params.r}
+  />
+);
 }
