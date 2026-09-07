@@ -1,16 +1,26 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import type { LinkRecord } from "@/lib/types";
 
-export default function AdminTable({ links }: { links: LinkRecord[] }) {
-  const router = useRouter();
+type Props = {
+  links: LinkRecord[];
+  onDelete: (id: number) => Promise<void>;
+};
 
+export default function AdminTable({
+  links,
+  onDelete,
+}: Props) {
   async function remove(id: number) {
-    if (!confirm("このURLを削除しますか？")) return;
-    const res = await fetch(`/api/links/${id}`, { method: "DELETE" });
-    if (!res.ok) alert("削除に失敗しました。");
-    router.refresh();
+    if (!confirm("このURLを削除しますか？")) {
+      return;
+    }
+
+    try {
+      await onDelete(id);
+    } catch {
+      alert("削除に失敗しました。");
+    }
   }
 
   return (

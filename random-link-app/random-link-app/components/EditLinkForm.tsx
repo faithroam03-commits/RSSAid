@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LinkRecord } from "@/lib/types";
-
+import { updateClientLink } from "@/lib/client-db";
 
 export default function EditLinkForm({
   item,
@@ -98,15 +98,17 @@ export default function EditLinkForm({
     e.preventDefault();
     setBusy(true); setMsg(null); setError(null);
     try {
-      const res = await fetch(`/api/links/${item.id}`, {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageFit,url, title, thumbnailUrl, genre, enabled })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "保存に失敗しました。");
-      setMsg("保存しました。");
-      router.push("/admin");
+      await updateClientLink(item.id, {
+  url,
+  title,
+  thumbnailUrl,
+  imageFit,
+  genre,
+  enabled: enabled ? 1 : 0,
+});
+
+setMsg("保存しました。");
+router.push("/admin");
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました。");
     } finally {
@@ -117,7 +119,17 @@ export default function EditLinkForm({
   async function scanImages() {
     setBusy(true); setMsg(null); setError(null);
     try {
-      const res = await fetch(`/api/links/${item.id}/scan-images`, { method: "POST" });
+      
+      const res = await fetch("/api/scan-images", {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({
+    url,
+  }),
+});
+      
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "画像取得に失敗しました。");
       setCandidates(data.images || []);

@@ -118,6 +118,10 @@ export type ClientLinkInput = {
 };
 
 export async function insertClientLink(input: ClientLinkInput) {
+  const finalGenre = input.genre ?? "New";
+
+  await insertClientGenre(finalGenre);
+
   const db = await getClientDb();
   const now = new Date().toISOString();
 
@@ -138,7 +142,7 @@ export async function insertClientLink(input: ClientLinkInput) {
     title: input.title,
     thumbnail_url: input.thumbnailUrl ?? null,
     image_fit: input.imageFit ?? "cover",
-    genre: input.genre ?? "New",
+    genre: finalGenre,
     enabled: 1,
     created_at: now,
     updated_at: now,
