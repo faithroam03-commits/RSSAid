@@ -152,16 +152,95 @@ export async function fetchPageMetadata(rawUrl: string) {
     const candidates = new Set<string>();
     if (image) candidates.add(image);
 
-    $("img").each((_, el) => {
-      if (candidates.size >= 30) return;
-      const src =
-        $(el).attr("src") ||
-        $(el).attr("data-src") ||
-        $(el).attr("data-lazy-src");
-      const abs = absoluteUrl(src?.trim(), initialUrl);
-      if (abs) candidates.add(abs);
-    });
+$("img").each((_, el) => {
+  if (candidates.size >= 30) return;
 
+  const values = [
+    $(el).attr("src"),
+    $(el).attr("data-src"),
+    $(el).attr("data-lazy-src"),
+    $(el).attr("data-original"),
+  ];
+
+  for (const value of values) {
+    if (candidates.size >= 30) break;
+
+    const abs = absoluteUrl(value?.trim(), initialUrl);
+    if (abs) {
+      candidates.add(abs);
+    }
+  }
+
+  const srcsets = [
+    $(el).attr("srcset"),
+    $(el).attr("data-srcset"),
+  ];
+
+  for (const srcset of srcsets) {
+    if (!srcset) continue;
+
+    for (const part of srcset.split(",")) {
+      if (candidates.size >= 30) break;
+
+      const value = part.trim().split(/\s+/)[0];
+      const abs = absoluteUrl(value, initialUrl);
+
+      if (abs) {
+        candidates.add(abs);
+      }
+    }
+  }
+});
+
+    $("source").each((_, el) => {
+  if (candidates.size >= 30) return;
+
+  const srcsets = [
+    $(el).attr("srcset"),
+    $(el).attr("data-srcset"),
+  ];
+
+  for (const srcset of srcsets) {
+    if (!srcset) continue;
+
+    for (const part of srcset.split(",")) {
+      if (candidates.size >= 30) break;
+
+      const value = part.trim().split(/\s+/)[0];
+      const abs = absoluteUrl(value, initialUrl);
+
+      if (abs) {
+        candidates.add(abs);
+      }
+    }
+  }
+});
+
+$("[style]").each((_, el) => {
+  if (candidates.size >= 30) return;
+
+  const style = $(el).attr("style");
+  if (!style) return;
+
+  const matches =
+    style.matchAll(
+      /background(?:-image)?\s*:\s*url\((['"]?)(.*?)\1\)/gi
+    );
+
+  for (const match of matches) {
+    if (candidates.size >= 30) break;
+
+    const abs = absoluteUrl(
+      match[2]?.trim(),
+      initialUrl
+    );
+
+    if (abs) {
+      candidates.add(abs);
+    }
+  }
+});
+    
     return {
       finalUrl: initialUrl.toString(),
       title: title.slice(0, 300),
