@@ -125,15 +125,6 @@ export async function insertClientLink(input: ClientLinkInput) {
   const db = await getClientDb();
   const now = new Date().toISOString();
 
-  const existingLinks = await db.getAll("links");
-  const duplicate = existingLinks.some(
-    (item) => item.url === input.url
-  );
-
-  if (duplicate) {
-    throw new Error("このURLはすでに登録されています。");
-  }
-
   const id = Date.now();
 
   await db.add("links", {
@@ -203,20 +194,7 @@ export async function updateClientLink(
   if (!current) {
     throw new Error("更新対象のURLが見つかりません。");
   }
-
-  if (input.url && input.url !== current.url) {
-    const links = await db.getAll("links");
-
-    const duplicate = links.some(
-      (item) =>
-        item.id !== id &&
-        item.url === input.url
-    );
-
-    if (duplicate) {
-      throw new Error("このURLはすでに登録されています。");
-    }
-  }
+  
 
   const updated = {
     ...current,
@@ -388,4 +366,11 @@ export async function getRandomClientLinks(
   }
 
   return filtered.slice(0, count);
+}
+
+export async function hasClientLinkByUrl(url: string) {
+  const db = await getClientDb();
+  const links = await db.getAll("links");
+
+  return links.some((item) => item.url === url);
 }

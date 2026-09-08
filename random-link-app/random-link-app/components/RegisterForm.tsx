@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  hasClientLinkByUrl,
   insertClientGenre,
   insertClientLink,
 } from "@/lib/client-db";
@@ -18,6 +19,8 @@ export default function RegisterForm({
   const [busy, setBusy] = useState(false);
   const [genre, setGenre] = useState("New");
   const [message, setMessage] = useState<string | null>(null);
+  const [duplicateNotice, setDuplicateNotice] =
+  useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
@@ -38,13 +41,13 @@ export default function RegisterForm({
   setMessage(null);
   setError(null);
   setManualMode(false);
+  setDuplicateNotice(null);
   }
   function clearTitle() {
   setTitle("");
   }
   function changeUrl(value: string) {
   setUrl(value);
-
   setTitle("");
   setThumbnailUrl("");
   setCandidates([]);
@@ -52,6 +55,7 @@ export default function RegisterForm({
   setMessage(null);
   setError(null);
   setManualMode(false);
+  setDuplicateNotice(null);
   }
   
 async function uploadThumbnail(
@@ -124,11 +128,20 @@ async function uploadThumbnail(
 }
   
 async function fetchMetadata() {
+  
   if (!url.trim()) {
     setError("URLを入力してください。");
     return;
   }
 
+  const alreadyRegistered = await hasClientLinkByUrl(url.trim());
+
+setDuplicateNotice(
+  alreadyRegistered
+    ? "※既に登録されているURLです。新規カードとして登録されます"
+    : null
+);
+  
   setBusy(true);
   setError(null);
   setMessage(null);
@@ -340,6 +353,12 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
   {busy ? "情報を取得中..." : "情報を取得"}
 </button>
 
+      {duplicateNotice && (
+  <div className="small" style={{ marginTop: 8 }}>
+    {duplicateNotice}
+  </div>
+)}
+      
 {error && !previewReady && (
   <div className="error">
     <div>{error}</div>
