@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 
+import {
+  deleteClientGenre,
+  insertClientGenre,
+  moveClientGenre,
+} from "@/lib/client-db";
+
 export default function GenresManager({
   genres,
 }: {
@@ -16,25 +22,27 @@ export default function GenresManager({
 async function move(index: number, direction: -1 | 1) {
   const target = index + direction;
 
-  if (target < 1 || target >= items.length) return;
+  if (target < 1 || target >= items.length) {
+    return;
+  }
+
+  const name = items[index];
+
+  await moveClientGenre(
+    name,
+    direction === -1 ? "up" : "down"
+  );
 
   const next = [...items];
-  [next[index], next[target]] = [next[target], next[index]];
+
+  [next[index], next[target]] = [
+    next[target],
+    next[index],
+  ];
 
   setItems(next);
-
-  await fetch("/api/genres", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      action: "reorder",
-      names: next,
-    }),
-  });
 }
-
+  
 async function add() {
   const name = newGenre.trim();
 
@@ -46,16 +54,7 @@ setGenreMessageType("error");
 return;
   }
 
-  await fetch("/api/genres", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      action: "add",
-      name,
-    }),
-  });
+  await insertClientGenre(name);
 
   setItems([...items, name]);
   setNewGenre("");
@@ -66,18 +65,11 @@ return;
 async function remove(name: string) {
   if (name === "New") return;
 
-  await fetch("/api/genres", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      action: "delete",
-      name,
-    }),
-  });
+  await deleteClientGenre(name);
 
-  setItems(items.filter((item) => item !== name));
+  setItems((current) =>
+    current.filter((item) => item !== name)
+  );
 }
   
   return (
