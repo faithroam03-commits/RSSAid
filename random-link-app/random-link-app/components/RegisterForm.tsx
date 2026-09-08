@@ -22,6 +22,7 @@ export default function RegisterForm({
   const [title, setTitle] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [previewReady, setPreviewReady] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
   const [candidates, setCandidates] = useState<string[]>([]);
   const router = useRouter();
   const [imageFit, setImageFit] = useState<"cover" | "contain">("cover");
@@ -36,6 +37,7 @@ export default function RegisterForm({
   setPreviewReady(false);
   setMessage(null);
   setError(null);
+  setManualMode(false);
   }
   function clearTitle() {
   setTitle("");
@@ -49,6 +51,7 @@ export default function RegisterForm({
   setPreviewReady(false);
   setMessage(null);
   setError(null);
+  setManualMode(false);
   }
   
 async function uploadThumbnail(
@@ -165,10 +168,21 @@ setPreviewReady(true);
     message.includes("ETIMEDOUT");
 
   setError(
-    isNetworkError
-      ? "ページ情報を取得できませんでした。URLを確認してください。"
-      : message
-  );
+  isNetworkError
+    ? "ページ情報を取得できませんでした。URLを確認してください。"
+    : message
+);
+
+if (!title.trim()) {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, "");
+    setTitle(hostname);
+  } catch {
+    setTitle(url);
+  }
+}
+
+setManualMode(true);
 } finally {
   setBusy(false);
 }
@@ -201,14 +215,26 @@ setMessage(`「${title}」を${finalGenre}に追加しました。`);
 router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
      
 } catch (e) {
-  setError(
+  const message =
     e instanceof Error
       ? e.message
-      : "登録に失敗しました。"
+      : "ページ情報の取得に失敗しました。";
+
+  const isNetworkError =
+    message === "fetch failed" ||
+    message.includes("ENOTFOUND") ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("ETIMEDOUT");
+
+  setError(
+    isNetworkError
+      ? "ページ情報を取得できませんでした。URLを確認してください。"
+      : message
   );
+
 } finally {
   setBusy(false);
-}
+}  
 }
   return (
     <form className="panel form" onSubmit={submit}>
@@ -315,10 +341,18 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
 </button>
 
 {error && !previewReady && (
-  <div className="error">{error}</div>
-)}
+  <div className="error">
+    <div>{error}</div>
 
-{previewReady && (
+    <div style={{ marginTop: 8 }}>
+      画像取得に失敗しました。URLのみ登録しますか？
+      <br />
+      もしくは、端末から画像を選択して下さい。
+    </div>
+  </div>
+)}
+      
+{(previewReady || manualMode) && (
   <div className="panel" style={{ marginTop: 20 }}>
 
 <label>
@@ -370,7 +404,8 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
         }}
       />
     </div>
-
+</div>
+)}
         <button
       type="submit"
       className="btn primary"
@@ -406,8 +441,6 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
   />
 </label>
         
-      </div>
-    )}
 
 {candidates.length > 0 && (
   <div style={{ marginTop: 20 }}>
