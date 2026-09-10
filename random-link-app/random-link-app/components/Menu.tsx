@@ -54,6 +54,11 @@ export default function Menu() {
         <Link href="/genres" onClick={closeMenu}>
           ジャンル管理
         </Link>
+       
+       <Link href="/backup" onClick={closeMenu}>
+  バックアップ
+</Link>
+       
       </nav>
     </details>
   );

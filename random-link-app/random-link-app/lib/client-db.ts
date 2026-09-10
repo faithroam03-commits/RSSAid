@@ -62,18 +62,32 @@ function getClientDb() {
 export async function ensureDefaultGenre() {
   const db = await getClientDb();
 
-  const genres = await db.getAll("genres");
+  const tx = db.transaction("genres", "readwrite");
+  const genres = await tx.store.getAll();
 
-  const hasNew = genres.some((item) => item.name === "New");
+  const newGenres = genres
+    .filter((item) => item.name === "New")
+    .sort(
+      (a, b) =>
+        a.sort_order - b.sort_order ||
+        a.id - b.id
+    );
 
-  if (!hasNew) {
-    await db.add("genres", {
+  if (newGenres.length === 0) {
+    await tx.store.add({
       id: Date.now(),
       name: "New",
       sort_order: 0,
     });
+  } else if (newGenres.length > 1) {
+    for (const duplicate of newGenres.slice(1)) {
+      await tx.store.delete(duplicate.id);
+    }
   }
+
+  await tx.done;
 }
+
 
 export async function getClientGenres(): Promise<string[]> {
   const db = await getClientDb();
@@ -85,6 +99,14 @@ export async function getClientGenres(): Promise<string[]> {
   return genres
     .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
     .map((item) => item.name);
+}
+
+export async function getClientGenreRecords() {
+  const db = await getClientDb();
+
+  await ensureDefaultGenre();
+
+  return db.getAll("genres");
 }
 
 export async function addClientLink() {
@@ -373,4 +395,137 @@ export async function hasClientLinkByUrl(url: string) {
   const links = await db.getAll("links");
 
   return links.some((item) => item.url === url);
+}
+export type ClientBackupData = {
+  version: number;
+  exportedAt?: string;
+  links: Array<{
+    id: number;
+    url: string;
+    title: string;
+    thumbnail_url: string | null;
+    image_fit: "cover" | "contain";
+    genre: string;
+    enabled: number;
+    created_at: string;
+    updated_at: string;
+  }>;
+  genres: Array<{
+    id: number;
+    name: string;
+    sort_order: number;
+  }>;
+};
+
+export async function importClientBackup(data: ClientBackupData) {
+  if (
+    !data ||
+    data.version !== 1 ||
+    !Array.isArray(data.links) ||
+    !Array.isArray(data.genres)
+  ) {
+    throw new Error("対応していないバックアップファイルです。");
+  }
+
+  const db = await getClientDb();
+
+  const existingLinks = await db.getAll("links");
+  const existingGenres = await db.getAll("genres");
+
+  let nextId = Math.max(
+    Date.now(),
+    ...existingLinks.map((item) => item.id + 1),
+    ...existingGenres.map((item) => item.id + 1)
+  );
+
+  const genreNames = new Set(
+    existingGenres.map((item) => item.name)
+  );
+
+  const maxSortOrder = existingGenres.reduce(
+    (max, item) => Math.max(max, item.sort_order),
+    0
+  );
+
+  let addedGenres = 0;
+  let addedLinks = 0;
+
+  for (const genre of [...data.genres].sort(
+    (a, b) => a.sort_order - b.sort_order
+  )) {
+    if (
+      typeof genre.name !== "string" ||
+      !genre.name.trim() ||
+      genreNames.has(genre.name.trim())
+    ) {
+      continue;
+    }
+
+    await db.add("genres", {
+      id: nextId++,
+      name: genre.name.trim(),
+      sort_order: maxSortOrder + addedGenres + 1,
+    });
+
+    genreNames.add(genre.name.trim());
+    addedGenres++;
+  }
+
+  if (!genreNames.has("New")) {
+    await db.add("genres", {
+      id: nextId++,
+      name: "New",
+      sort_order: 0,
+    });
+
+    genreNames.add("New");
+    addedGenres++;
+  }
+
+  for (const link of data.links) {
+    if (
+      typeof link.url !== "string" ||
+      !link.url.trim() ||
+      typeof link.title !== "string"
+    ) {
+      continue;
+    }
+
+    const genre =
+      typeof link.genre === "string" &&
+      genreNames.has(link.genre)
+        ? link.genre
+        : "New";
+
+    await db.add("links", {
+      id: nextId++,
+      url: link.url,
+      title: link.title,
+      thumbnail_url:
+        typeof link.thumbnail_url === "string"
+          ? link.thumbnail_url
+          : null,
+      image_fit:
+        link.image_fit === "contain"
+          ? "contain"
+          : "cover",
+      genre,
+      enabled: link.enabled === 0 ? 0 : 1,
+      created_at:
+        typeof link.created_at === "string"
+          ? link.created_at
+          : new Date().toISOString(),
+      updated_at:
+        typeof link.updated_at === "string"
+          ? link.updated_at
+          : new Date().toISOString(),
+    });
+
+    addedLinks++;
+  }
+
+  return {
+    addedLinks,
+    addedGenres,
+  };
 }
