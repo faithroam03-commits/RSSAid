@@ -577,7 +577,7 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
 
 .adminSort {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   gap: 8px;
   margin: 0 0 16px;
 }
@@ -605,7 +605,7 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   display: grid;
   grid-template-columns: 1fr 1fr auto;
   gap: 10px;
-  align-items: end;
+  align-items: flex-end;
   margin: 0 0 16px;
 }
 
