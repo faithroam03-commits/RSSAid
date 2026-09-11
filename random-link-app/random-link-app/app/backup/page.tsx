@@ -38,8 +38,8 @@ async function runImport() {
     const result = await importClientBackup(importData);
 
     setImportResult(
-      `インポート完了：リンク ${result.addedLinks}件、ジャンル ${result.addedGenres}件を追加しました。`
-    );
+  `インポート完了：リンク ${result.addedLinks}件、ジャンル ${result.addedGenres}件を追加しました。トップページやジャンル管理で内容を確認してください。`
+);
   } catch (error) {
     console.error(error);
     setImportError("インポートに失敗しました。");
@@ -162,7 +162,16 @@ async function runImport() {
 )}
 
 {importResult && (
-  <div style={{ marginTop: 16 }}>
+  <div
+    style={{
+      marginTop: 16,
+      padding: 16,
+      borderRadius: 12,
+      background: "#eefaf0",
+      border: "1px solid #b7dfbf",
+      fontWeight: 700,
+    }}
+  >
     {importResult}
   </div>
 )}
