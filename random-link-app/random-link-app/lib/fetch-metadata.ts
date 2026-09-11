@@ -58,13 +58,27 @@ async function assertSafeUrl(raw: string): Promise<URL> {
       throw new Error("プライベートIPは登録できません。");
     }
   } else {
-    const addresses = await dns.lookup(hostname, { all: true });
-    if (!addresses.length) throw new Error("ホスト名を解決できません。");
-    for (const a of addresses) {
-      if (isPrivateIPv4(a.address) || isPrivateIPv6(a.address)) {
-        throw new Error("プライベートネットワークを指すURLは登録できません。");
-      }
-    }
+const addresses: string[] = [];
+
+try {
+  addresses.push(...(await dns.resolve4(hostname)));
+} catch {}
+
+try {
+  addresses.push(...(await dns.resolve6(hostname)));
+} catch {}
+
+if (!addresses.length) {
+  throw new Error("ホスト名を解決できません。");
+}
+
+for (const address of addresses) {
+  if (isPrivateIPv4(address) || isPrivateIPv6(address)) {
+    throw new Error(
+      "プライベートネットワークを指すURLは登録できません。"
+    );
+  }
+}
   }
   return url;
 }
