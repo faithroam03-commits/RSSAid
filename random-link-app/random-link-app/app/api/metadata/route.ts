@@ -19,21 +19,12 @@ if (limiter) {
     key: "metadata",
   });
 
-  console.log("RATE_LIMIT_DEBUG", {
-    limiterFound: true,
-    success,
-  });
-
   if (!success) {
     return NextResponse.json(
       { error: "アクセスが集中しています。少し待ってから再試行してください。" },
       { status: 429 }
     );
   }
-}else {
-  console.log("RATE_LIMIT_DEBUG", {
-    limiterFound: false,
-  });
 }
     
     const body = await req.json();
