@@ -4,6 +4,7 @@ import net from "node:net";
 
 const MAX_HTML_BYTES = 2_000_000;
 const TIMEOUT_MS = 8_000;
+const MAX_REDIRECTS = 5;
 
 function isPrivateIPv4(ip: string) {
   const p = ip.split(".").map(Number);
@@ -94,7 +95,7 @@ function absoluteUrl(value: string | undefined, base: URL): string | null {
   }
 }
 
-export async function fetchPageMetadata(rawUrl: string) {
+export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
   const initialUrl = await assertSafeUrl(rawUrl);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -109,14 +110,20 @@ export async function fetchPageMetadata(rawUrl: string) {
     });
 
     // Redirect先も再検証してSSRFを防ぐ
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get("location");
-      if (!location) throw new Error("リダイレクト先を取得できません。");
-      const next = new URL(location, initialUrl).toString();
-      await assertSafeUrl(next);
-      return fetchPageMetadata(next);
-    }
+if (res.status >= 300 && res.status < 400) {
+  if (redirectCount >= MAX_REDIRECTS) {
+    throw new Error("リダイレクト回数が多すぎます。");
+  }
 
+  const location = res.headers.get("location");
+  if (!location) throw new Error("リダイレクト先を取得できません。");
+
+  const next = new URL(location, initialUrl).toString();
+  await assertSafeUrl(next);
+
+  return fetchPageMetadata(next, redirectCount + 1);
+}
+    
     if (!res.ok) throw new Error(`ページ取得に失敗しました (${res.status})`);
 
     const contentType = res.headers.get("content-type") || "";
