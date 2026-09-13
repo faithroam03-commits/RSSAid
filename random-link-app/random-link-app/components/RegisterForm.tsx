@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   hasClientLinkByUrl,
@@ -27,8 +27,9 @@ export default function RegisterForm({
   const [previewReady, setPreviewReady] = useState(false);
   const [manualMode, setManualMode] = useState(false);
   const [candidates, setCandidates] = useState<string[]>([]);
-  const router = useRouter();
-  const [imageFit, setImageFit] = useState<"cover" | "contain">("cover");
+ const router = useRouter();
+ const autoFetchStarted = useRef(false);
+ const [imageFit, setImageFit] = useState<"cover" | "contain">("cover");
   const [showGenreAdd, setShowGenreAdd] = useState(false);
   const [newGenre, setNewGenre] = useState("");
 
@@ -200,6 +201,15 @@ setManualMode(true);
   setBusy(false);
 }
 }
+  useEffect(() => {
+  if (!initialUrl || autoFetchStarted.current) {
+    return;
+  }
+
+  autoFetchStarted.current = true;
+  void fetchMetadata();
+}, [initialUrl]);
+  
 async function submit(e: FormEvent) {
   e.preventDefault();
   setBusy(true);

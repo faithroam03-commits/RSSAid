@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { fetchPageMetadata } from "@/lib/fetch-metadata";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 type RateLimitBinding = {
   limit(options: { key: string }): Promise<{ success: boolean }>;
@@ -8,11 +7,21 @@ type RateLimitBinding = {
 
 export async function POST(req: Request) {
   try {
-    const { env } = await getCloudflareContext({ async: true });
 
-const limiter = (env as CloudflareEnv & {
-  API_RATE_LIMITER?: RateLimitBinding;
-}).API_RATE_LIMITER;
+let limiter: RateLimitBinding | undefined;
+
+if (process.env.NODE_ENV === "production") {
+  const { getCloudflareContext } = await import(
+    "@opennextjs/cloudflare"
+  );
+
+  const { env } = await getCloudflareContext({ async: true });
+
+  limiter = (env as CloudflareEnv & {
+    API_RATE_LIMITER?: RateLimitBinding;
+  }).API_RATE_LIMITER;
+}
+    
 
 if (limiter) {
   const { success } = await limiter.limit({
