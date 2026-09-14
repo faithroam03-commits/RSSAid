@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchPageMetadata } from "@/lib/fetch-metadata";
+import { checkWebRisk } from "@/lib/check-web-risk";
 
 type RateLimitBinding = {
   limit(options: { key: string }): Promise<{ success: boolean }>;
@@ -41,6 +42,18 @@ if (process.env.NODE_ENV === "production") {
     if (!url) {
       return NextResponse.json(
         { error: "URLが指定されていません。" },
+        { status: 400 }
+      );
+    }
+
+    const risk = await checkWebRisk(url);
+
+    if (!risk.safe) {
+      return NextResponse.json(
+        {
+          error: "安全でない可能性があるURLのため登録できません。",
+          threatTypes: risk.threatTypes,
+        },
         { status: 400 }
       );
     }
