@@ -373,11 +373,13 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
   <div className="error">
     <div>{error}</div>
 
-    <div style={{ marginTop: 8 }}>
-      画像取得に失敗しました。URLのみ登録しますか？
-      <br />
-      もしくは、端末から画像を選択して下さい。
-    </div>
+    {error !== "安全でない可能性があるURLのため登録できません。" && (
+      <div style={{ marginTop: 8 }}>
+        画像取得に失敗しました。URLのみ登録しますか？
+        <br />
+        もしくは、端末から画像を選択して下さい。
+      </div>
+    )}
   </div>
 )}
       
