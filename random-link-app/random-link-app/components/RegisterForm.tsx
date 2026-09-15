@@ -217,21 +217,38 @@ async function submit(e: FormEvent) {
   setMessage(null);
 
 try {
+  // 登録直前にもWeb Riskチェックを通す
+  const safetyRes = await fetch("/api/scan-images", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ url }),
+  });
+
+  const safetyData = await safetyRes.json();
+
+  if (!safetyRes.ok) {
+    throw new Error(
+      safetyData.error || "URLの安全性を確認できませんでした。"
+    );
+  }
+
   let finalGenre = genre;
   const name = newGenre.trim();
 
-if (showGenreAdd && name) {
-  await insertClientGenre(name);
-  finalGenre = name;
-}
+  if (showGenreAdd && name) {
+    await insertClientGenre(name);
+    finalGenre = name;
+  }
 
-await insertClientLink({
-  url,
-  title,
-  thumbnailUrl,
-  imageFit,
-  genre: finalGenre,
-});
+  await insertClientLink({
+    url,
+    title,
+    thumbnailUrl,
+    imageFit,
+    genre: finalGenre,
+  });
 
 setMessage(`「${title}」を${finalGenre}に追加しました。`);
 
