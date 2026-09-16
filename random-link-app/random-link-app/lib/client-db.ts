@@ -396,6 +396,132 @@ export async function hasClientLinkByUrl(url: string) {
 
   return links.some((item) => item.url === url);
 }
+export type ClientSharedGenreData = {
+  version: 1;
+  genreName: string;
+  exportedAt?: string;
+  links: Array<{
+    url: string;
+    title: string;
+    thumbnail_url: string | null;
+    image_fit: "cover" | "contain";
+  }>;
+};
+export async function exportClientGenre(
+  genreName: string
+): Promise<ClientSharedGenreData> {
+  const db = await getClientDb();
+
+  const links = await db.getAllFromIndex(
+    "links",
+    "by-genre",
+    genreName
+  );
+
+  return {
+    version: 1,
+    genreName,
+    exportedAt: new Date().toISOString(),
+    links: links.map((link) => ({
+      url: link.url,
+      title: link.title,
+      thumbnail_url: link.thumbnail_url,
+      image_fit: link.image_fit,
+    })),
+  };
+}
+
+export async function importClientSharedGenre(
+  data: ClientSharedGenreData,
+  genreName: string,
+  safeUrls: string[]
+) {
+  if (
+    !data ||
+    data.version !== 1 ||
+    !Array.isArray(data.links)
+  ) {
+    throw new Error("対応していない共有ジャンルファイルです。");
+  }
+
+  const targetGenre = genreName.trim();
+
+  if (!targetGenre) {
+    throw new Error("取り込み先ジャンル名を入力してください。");
+  }
+
+  const safeUrlSet = new Set(safeUrls);
+  const db = await getClientDb();
+
+  const existingLinks = await db.getAll("links");
+  const existingGenres = await db.getAll("genres");
+
+  let nextId = Math.max(
+    Date.now(),
+    ...existingLinks.map((item) => item.id + 1),
+    ...existingGenres.map((item) => item.id + 1)
+  );
+
+  const existingGenre = existingGenres.find(
+    (item) => item.name === targetGenre
+  );
+
+  let addedGenre = false;
+
+  if (!existingGenre) {
+    const maxSortOrder = existingGenres.reduce(
+      (max, item) => Math.max(max, item.sort_order),
+      0
+    );
+
+    await db.add("genres", {
+      id: nextId++,
+      name: targetGenre,
+      sort_order: maxSortOrder + 1,
+    });
+
+    addedGenre = true;
+  }
+
+  let addedLinks = 0;
+
+  for (const link of data.links) {
+    if (
+      typeof link.url !== "string" ||
+      !link.url.trim() ||
+      typeof link.title !== "string" ||
+      !safeUrlSet.has(link.url.trim())
+    ) {
+      continue;
+    }
+
+    await db.add("links", {
+      id: nextId++,
+      url: link.url.trim(),
+      title: link.title,
+      thumbnail_url:
+        typeof link.thumbnail_url === "string"
+          ? link.thumbnail_url
+          : null,
+      image_fit:
+        link.image_fit === "contain"
+          ? "contain"
+          : "cover",
+      genre: targetGenre,
+      enabled: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    addedLinks++;
+  }
+
+  return {
+    addedLinks,
+    addedGenre,
+  };
+}
+
 export type ClientBackupData = {
   version: number;
   exportedAt?: string;
