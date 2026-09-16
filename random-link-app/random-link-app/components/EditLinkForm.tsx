@@ -3,7 +3,10 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LinkRecord } from "@/lib/types";
-import { updateClientLink } from "@/lib/client-db";
+import {
+  insertClientGenre,
+  updateClientLink,
+} from "@/lib/client-db";
 
 export default function EditLinkForm({
   item,
@@ -21,6 +24,8 @@ export default function EditLinkForm({
   item.image_fit || "cover"
 );
   const [genre, setGenre] = useState(item.genre);
+  const [showGenreAdd, setShowGenreAdd] = useState(false);
+  const [newGenre, setNewGenre] = useState("");
   const [enabled, setEnabled] = useState(Boolean(item.enabled));
   const [candidates, setCandidates] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -94,27 +99,61 @@ export default function EditLinkForm({
   }
   }
   
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true); setMsg(null); setError(null);
-    try {
-      await updateClientLink(item.id, {
-  url,
-  title,
-  thumbnailUrl,
-  imageFit,
-  genre,
-  enabled: enabled ? 1 : 0,
-});
+async function save(e: FormEvent) {
+  e.preventDefault();
+  setBusy(true);
+  setMsg(null);
+  setError(null);
 
-setMsg("保存しました。");
-router.push("/admin");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "保存に失敗しました。");
-    } finally {
-      setBusy(false);
+  try {
+    // 保存直前にWeb Riskチェック
+    const safetyRes = await fetch("/api/scan-images", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ url }),
+    });
+
+    const safetyData = await safetyRes.json();
+
+    if (!safetyRes.ok) {
+      throw new Error(
+        safetyData.error || "URLの安全性を確認できませんでした。"
+      );
     }
+
+    let finalGenre = genre;
+    const name = newGenre.trim();
+
+    if (showGenreAdd) {
+      if (!name) {
+        throw new Error("ジャンル名を入力してください。");
+      }
+
+      await insertClientGenre(name);
+      finalGenre = name;
+    }
+
+    await updateClientLink(item.id, {
+      url,
+      title,
+      thumbnailUrl,
+      imageFit,
+      genre: finalGenre,
+      enabled: enabled ? 1 : 0,
+    });
+
+    setMsg("保存しました。");
+    router.push("/admin");
+  } catch (e) {
+    setError(
+      e instanceof Error ? e.message : "保存に失敗しました。"
+    );
+  } finally {
+    setBusy(false);
   }
+}
 
   async function scanImages() {
     setBusy(true); setMsg(null); setError(null);
@@ -171,40 +210,75 @@ router.push("/admin");
   </div>
 </label>
         
-<label>
-  ジャンル
+{!showGenreAdd && (
+  <label>
+    ジャンル
 
-  <details className="genreSelect">
-    <summary>{genre || "選択してください"}</summary>
+    <details className="genreSelect">
+      <summary>{genre || "選択してください"}</summary>
 
-    <div className="genreSelectList">
-      <button
-        type="button"
-        onClick={(e) => {
-          setGenre("New");
-          e.currentTarget.closest("details")?.removeAttribute("open");
-        }}
-      >
-        New
-      </button>
+      <div className="genreSelectList">
+        <button
+          type="button"
+          onClick={(e) => {
+            setGenre("New");
+            e.currentTarget
+              .closest("details")
+              ?.removeAttribute("open");
+          }}
+        >
+          New
+        </button>
 
-      {genres
-        .filter((g) => g !== "New")
-        .map((g) => (
-          <button
-            key={g}
-            type="button"
-            onClick={(e) => {
-              setGenre(g);
-              e.currentTarget.closest("details")?.removeAttribute("open");
-            }}
-          >
-            {g}
-          </button>
-        ))}
+        {genres
+          .filter((g) => g !== "New")
+          .map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={(e) => {
+                setGenre(g);
+                e.currentTarget
+                  .closest("details")
+                  ?.removeAttribute("open");
+              }}
+            >
+              {g}
+            </button>
+          ))}
+      </div>
+    </details>
+  </label>
+)}
+
+<button
+  type="button"
+  onClick={() => {
+    if (showGenreAdd) {
+      setNewGenre("");
+    }
+    setShowGenreAdd(!showGenreAdd);
+  }}
+>
+  ＋ 新規ジャンル
+</button>
+
+{showGenreAdd && (
+  <div>
+    <input
+      type="text"
+      value={newGenre}
+      onChange={(e) => setNewGenre(e.target.value)}
+      placeholder="ジャンル名"
+    />
+
+    <div className="small">
+      {newGenre.trim()
+        ? `ジャンル「${newGenre.trim()}」を新規作成して保存`
+        : "ジャンル名を入力してください"}
     </div>
-  </details>
-</label>
+  </div>
+)}
         
         <label style={{display:"flex", gridTemplateColumns:"auto 1fr", alignItems:"center", justifyContent:"start"}}>
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
@@ -276,6 +350,8 @@ router.push("/admin");
 
 </div>
 
+        {error && <div className="error">{error}</div>}
+        
   <label>
   サムネイルの大きさ:
   <select
@@ -291,7 +367,6 @@ router.push("/admin");
         
         
         {msg && <div className="notice">{msg}</div>}
-        {error && <div className="error">{error}</div>}
       </form>
 
       {candidates.length > 0 && (
