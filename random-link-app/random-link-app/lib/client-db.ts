@@ -434,7 +434,8 @@ export async function exportClientGenre(
 export async function importClientSharedGenre(
   data: ClientSharedGenreData,
   genreName: string,
-  safeUrls: string[]
+  safeUrls: string[],
+  excludedIndexes: number[] = []
 ) {
   if (
     !data ||
@@ -451,6 +452,7 @@ export async function importClientSharedGenre(
   }
 
   const safeUrlSet = new Set(safeUrls);
+  const excludedIndexSet = new Set(excludedIndexes);
   const db = await getClientDb();
 
   const existingLinks = await db.getAll("links");
@@ -485,12 +487,13 @@ export async function importClientSharedGenre(
 
   let addedLinks = 0;
 
-  for (const link of data.links) {
+  for (const [index, link] of data.links.entries()) {
     if (
       typeof link.url !== "string" ||
       !link.url.trim() ||
       typeof link.title !== "string" ||
-      !safeUrlSet.has(link.url.trim())
+      !safeUrlSet.has(link.url.trim()) ||
+      excludedIndexSet.has(index)
     ) {
       continue;
     }
@@ -608,7 +611,7 @@ export async function importClientBackup(data: ClientBackupData) {
     addedGenres++;
   }
 
-  for (const link of data.links) {
+   for (const link of data.links) {
     if (
       typeof link.url !== "string" ||
       !link.url.trim() ||

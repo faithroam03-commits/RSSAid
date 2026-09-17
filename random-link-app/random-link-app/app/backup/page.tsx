@@ -33,6 +33,25 @@ const [sharedImportError, setSharedImportError] =
 
   const [sharedImportResult, setSharedImportResult] = useState("");
 const [sharedImporting, setSharedImporting] = useState(false);
+
+type SharedContentCheckResult = {
+  id: number;
+  r18: boolean;
+  violent: boolean;
+};
+
+type PendingSharedImport = {
+  targetGenre: string;
+  safeUrls: string[];
+  blockedCount: number;
+  contentResults: SharedContentCheckResult[];
+  r18Count: number;
+  violenceCount: number;
+};
+
+const [pendingSharedImport, setPendingSharedImport] =
+  useState<PendingSharedImport | null>(null);
+
   
 useEffect(() => {
   async function loadShareGenres() {
@@ -181,94 +200,201 @@ async function runImport() {
     );
   }
   }
-async function runSharedImport() {
-  if (!sharedImportData) {
-    return;
-  }
 
-  const targetGenre = sharedImportGenreName.trim();
-
-  if (!targetGenre) {
-    setSharedImportError("取り込み先ジャンル名を入力してください。");
-    return;
-  }
-
-  setSharedImporting(true);
-  setSharedImportError("");
-  setSharedImportResult("");
-
-  try {
-    const urls = sharedImportData.links.map(
-      (link) => link.url
-    );
-
-    const res = await fetch("/api/check-urls", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ urls }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(
-        data.error || "URLの安全性を確認できませんでした。"
-      );
+   async function runSharedImport() {
+    if (!sharedImportData) {
+      return;
     }
 
-    if (!Array.isArray(data.results)) {
-      throw new Error("URLの安全性確認結果が不正です。");
+    const targetGenre = sharedImportGenreName.trim();
+
+    if (!targetGenre) {
+      setSharedImportError("取り込み先ジャンル名を入力してください。");
+      return;
     }
 
-    const safeUrls = data.results
-      .filter(
-        (result: {
-          url: string;
-          safe: boolean;
-        }) => result.safe
-      )
-      .map(
-        (result: {
-          url: string;
-          safe: boolean;
-        }) => result.url
+    setSharedImporting(true);
+    setSharedImportError("");
+    setSharedImportResult("");
+
+    try {
+      const urls = sharedImportData.links.map((link) => link.url);
+
+      const res = await fetch("/api/check-urls", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ urls }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "URLの安全性を確認できませんでした。");
+      }
+
+      if (!Array.isArray(data.results)) {
+        throw new Error("URLの安全性確認結果が不正です。");
+      }
+
+      const safeUrls = data.results
+        .filter((result: { url: string; safe: boolean }) => result.safe)
+        .map((result: { url: string; safe: boolean }) => result.url);
+
+      const blockedCount = sharedImportData.links.length - safeUrls.length;
+
+      const safeUrlSet = new Set(safeUrls);
+
+      const contentItems = sharedImportData.links
+        .map((link, index) => ({
+          link,
+          index,
+        }))
+        .filter(
+          ({ link }) =>
+            safeUrlSet.has(link.url) &&
+            typeof link.thumbnail_url === "string" &&
+            link.thumbnail_url.trim(),
+        )
+        .map(({ link, index }) => ({
+          id: index,
+          imageUrl: link.thumbnail_url!.trim(),
+        }));
+
+      let contentResults: SharedContentCheckResult[] = [];
+      let r18Count = 0;
+      let violenceCount = 0;
+
+      if (contentItems.length > 0) {
+        const contentRes = await fetch("/api/check-content", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            items: contentItems,
+          }),
+        });
+
+        const contentData = await contentRes.json();
+
+        if (!contentRes.ok) {
+          throw new Error(
+            contentData.error || "コンテンツの安全性を確認できませんでした。",
+          );
+        }
+
+        if (!Array.isArray(contentData.results)) {
+          throw new Error("コンテンツの安全性確認結果が不正です。");
+        }
+
+        contentResults = contentData.results;
+        r18Count = contentData.r18Count ?? 0;
+        violenceCount = contentData.violenceCount ?? 0;
+      }
+
+      if (r18Count > 0 || violenceCount > 0) {
+        setPendingSharedImport({
+          targetGenre,
+          safeUrls,
+          blockedCount,
+          contentResults,
+          r18Count,
+          violenceCount,
+        });
+
+        return;
+      }
+
+      const result = await importClientSharedGenre(
+        sharedImportData,
+        targetGenre,
+        safeUrls,
       );
 
-    const blockedCount =
-      sharedImportData.links.length - safeUrls.length;
+      setSharedImportResult(
+        `${result.addedLinks}件取り込み、${blockedCount}件ブロックしました。`,
+      );
 
-    const result = await importClientSharedGenre(
-      sharedImportData,
-      targetGenre,
-      safeUrls
-    );
+      const records = await getClientGenreRecords();
 
-    setSharedImportResult(
-      `${result.addedLinks}件取り込み、${blockedCount}件ブロックしました。`
-    );
+      setShareGenres(
+        records
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((record) => record.name),
+      );
 
-    const records = await getClientGenreRecords();
-
-    setShareGenres(
-      records
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((record) => record.name)
-    );
-
-    setSharedImportData(null);
-    setSharedImportGenreName("");
-  } catch (e) {
-    setSharedImportError(
-      e instanceof Error
-        ? e.message
-        : "共有ジャンルの取り込みに失敗しました。"
-    );
-  } finally {
-    setSharedImporting(false);
+      setSharedImportData(null);
+      setSharedImportGenreName("");
+    } catch (e) {
+      setSharedImportError(
+        e instanceof Error
+          ? e.message
+          : "共有ジャンルの取り込みに失敗しました。",
+      );
+    } finally {
+      setSharedImporting(false);
+    }
   }
-}
+
+  async function finishSharedImport(excludeFlagged: boolean) {
+    if (!sharedImportData || !pendingSharedImport) {
+      return;
+    }
+
+    setSharedImporting(true);
+    setSharedImportError("");
+    setSharedImportResult("");
+
+    try {
+      const excludedIndexes = excludeFlagged
+        ? pendingSharedImport.contentResults
+            .filter((item) => item.r18 || item.violent)
+            .map((item) => item.id)
+        : [];
+
+      const result = await importClientSharedGenre(
+        sharedImportData,
+        pendingSharedImport.targetGenre,
+        pendingSharedImport.safeUrls,
+        excludedIndexes,
+      );
+
+      const contentBlockedCount = excludedIndexes.length;
+
+      setSharedImportResult(
+        `${result.addedLinks}件取り込み、` +
+          `${pendingSharedImport.blockedCount}件をWeb Riskでブロック、` +
+          `${contentBlockedCount}件を有害コンテンツ判定で除外しました。`,
+      );
+
+      const records = await getClientGenreRecords();
+
+      setShareGenres(
+        records
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((record) => record.name),
+      );
+
+      setPendingSharedImport(null);
+      setSharedImportData(null);
+      setSharedImportGenreName("");
+    } catch (e) {
+      setSharedImportError(
+        e instanceof Error
+          ? e.message
+          : "共有ジャンルの取り込みに失敗しました。",
+      );
+    } finally {
+      setSharedImporting(false);
+    }
+  }
+
+  function cancelSharedImport() {
+    setPendingSharedImport(null);
+    setSharedImportError("");
+  }
   
   async function selectImportFile(
   event: React.ChangeEvent<HTMLInputElement>
@@ -439,16 +565,85 @@ if (
   type="button"
   className="btn primary"
   onClick={runSharedImport}
-  disabled={
-    sharedImporting ||
-    !sharedImportGenreName.trim()
-  }
+disabled={
+  sharedImporting ||
+  pendingSharedImport !== null ||
+  !sharedImportGenreName.trim()
+}
   style={{ marginTop: 16 }}
 >
   {sharedImporting
     ? "安全性を確認して取り込み中..."
     : "取り込みを実行"}
 </button>
+
+      {pendingSharedImport && (
+  <div
+    style={{
+      marginTop: 16,
+      padding: 16,
+      borderRadius: 12,
+      border: "1px solid #d6b76c",
+      background: "#fff8e6",
+    }}
+  >
+    <div style={{ fontWeight: 700 }}>
+      有害コンテンツを含む可能性のあるカードが検出されました。
+    </div>
+
+    {pendingSharedImport.r18Count > 0 && (
+      <div style={{ marginTop: 12 }}>
+        R-18：{pendingSharedImport.r18Count}件
+      </div>
+    )}
+
+    {pendingSharedImport.violenceCount > 0 && (
+      <div style={{ marginTop: 4 }}>
+        暴力表現：{pendingSharedImport.violenceCount}件
+      </div>
+    )}
+
+    <div style={{ marginTop: 12 }}>
+      これらのカードを含めて取り込みますか？
+    </div>
+
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 8,
+        marginTop: 16,
+      }}
+    >
+      <button
+        type="button"
+        className="btn primary"
+        onClick={() => finishSharedImport(true)}
+        disabled={sharedImporting}
+      >
+        除外して取り込む
+      </button>
+
+      <button
+        type="button"
+        className="btn"
+        onClick={() => finishSharedImport(false)}
+        disabled={sharedImporting}
+      >
+        すべて取り込む
+      </button>
+
+      <button
+        type="button"
+        className="btn"
+        onClick={cancelSharedImport}
+        disabled={sharedImporting}
+      >
+        キャンセル
+      </button>
+    </div>
+  </div>
+)}
       
     </div>
   )}
