@@ -15,6 +15,12 @@ import { useEffect, useState } from "react";
 import { compareImages } from "@/lib/compare-images";
 
 export default function BackupPage() {
+
+  const [backupTab, setBackupTab] =
+  useState<"import" | "export">("import");
+
+  const [showSharedImportWarning, setShowSharedImportWarning] =
+  useState(false);
   
 const [importData, setImportData] = useState<ClientBackupData | null>(null);
 const [importError, setImportError] = useState("");
@@ -255,17 +261,45 @@ async function runImport() {
   return compared ? "not_found" : "unverifiable";
   }
 
-   async function runSharedImport() {
-    if (!sharedImportData) {
+  function acceptSharedImportWarning() {
+  localStorage.setItem(
+    "random-link-shared-import-warning-accepted",
+    "true"
+  );
+
+  setShowSharedImportWarning(false);
+  void runSharedImport(true);
+}
+
+function cancelSharedImportWarning() {
+  setShowSharedImportWarning(false);
+}
+
+async function runSharedImport(skipFirstWarning = false) {
+  if (!sharedImportData) {
+    return;
+  }
+
+  const targetGenre = sharedImportGenreName.trim();
+
+  if (!targetGenre) {
+    setSharedImportError(
+      "取り込み先ジャンル名を入力してください。"
+    );
+    return;
+  }
+
+  if (!skipFirstWarning) {
+    const accepted =
+      localStorage.getItem(
+        "random-link-shared-import-warning-accepted"
+      ) === "true";
+
+    if (!accepted) {
+      setShowSharedImportWarning(true);
       return;
     }
-
-    const targetGenre = sharedImportGenreName.trim();
-
-    if (!targetGenre) {
-      setSharedImportError("取り込み先ジャンル名を入力してください。");
-      return;
-    }
+  }
 
     setSharedImporting(true);
     setSharedImportError("");
@@ -615,13 +649,47 @@ if (
     <main>
       <h1>バックアップ</h1>
 
-      <p>
-        登録データのエクスポート・インポートを行います。
-      </p>
+<p>
+  登録データのエクスポート・インポートを行います。
+</p>
 
-      <div className="panel" style={{ marginTop: 24 }}>
+<div
+  style={{
+    display: "flex",
+    gap: 8,
+    marginTop: 24,
+  }}
+>
+  <button
+    type="button"
+    className={
+      backupTab === "import"
+        ? "btn primary"
+        : "btn"
+    }
+    onClick={() => setBackupTab("import")}
+    style={{ flex: 1 }}
+  >
+    インポート
+  </button>
 
-        <div className="panel" style={{ marginTop: 24 }}>
+  <button
+    type="button"
+    className={
+      backupTab === "export"
+        ? "btn primary"
+        : "btn"
+    }
+    onClick={() => setBackupTab("export")}
+    style={{ flex: 1 }}
+  >
+    エクスポート
+  </button>
+</div>
+
+{backupTab === "import" && (
+  <>
+<div className="panel">
   <h2>インポート</h2>
 
   <p>
@@ -677,7 +745,6 @@ if (
     {importResult}
   </div>
 )}
-          
 </div>
 
 <div className="panel" style={{ marginTop: 24 }}>
@@ -694,14 +761,15 @@ if (
   />
 
   {sharedImportGenreName.trim() &&
-  shareGenres.includes(sharedImportGenreName.trim()) && (
-    <div className="error" style={{ marginTop: 12 }}>
-      同じ名前のジャンルが既にあります。
-      このまま取り込むと既存ジャンルに追加されます。
-      別のジャンルとして取り込む場合は、ジャンル名を変更してください。
-    </div>
-  )}
-  
+    shareGenres.includes(sharedImportGenreName.trim()) && (
+      <div className="error" style={{ marginTop: 12 }}>
+        同じ名前のジャンルが既にあります。
+        このまま取り込むと既存ジャンルに追加されます。
+        別のジャンルとして取り込む場合は、
+        ジャンル名を変更してください。
+      </div>
+    )}
+
   {sharedImportError && (
     <div className="error" style={{ marginTop: 12 }}>
       {sharedImportError}
@@ -713,7 +781,7 @@ if (
       <div>
         元のジャンル名：{sharedImportData.genreName}
       </div>
-      
+
       <div style={{ marginTop: 8 }}>
         カード数：{sharedImportData.links.length}件
       </div>
@@ -731,23 +799,23 @@ if (
         />
       </label>
 
-            <button
-  type="button"
-  className="btn primary"
-  onClick={runSharedImport}
-disabled={
-  sharedImporting ||
-  pendingSharedImport !== null ||
-  !sharedImportGenreName.trim()
-}
-  style={{ marginTop: 16 }}
->
-  {sharedImporting
-    ? "安全性を確認して取り込み中..."
-    : "取り込みを実行"}
-</button>
+      <button
+        type="button"
+        className="btn primary"
+        onClick={() => void runSharedImport()}
+        disabled={
+          sharedImporting ||
+          pendingSharedImport !== null ||
+          !sharedImportGenreName.trim()
+        }
+        style={{ marginTop: 16 }}
+      >
+        {sharedImporting
+          ? "安全性を確認して取り込み中..."
+          : "取り込みを実行"}
+      </button>
 
-      {pendingSharedImport && (
+      {showSharedImportWarning && (
   <div
     style={{
       marginTop: 16,
@@ -757,75 +825,20 @@ disabled={
       background: "#fff8e6",
     }}
   >
-
-{(
-  pendingSharedImport.r18Count > 0 ||
-  pendingSharedImport.violenceCount > 0 ||
-  pendingSharedImport.bugCount > 0
-) && (
-  <div style={{ fontWeight: 700 }}>
-    有害コンテンツを含む可能性のあるカードが検出されました。
-  </div>
-)}
-
-    {pendingSharedImport.r18Count > 0 && (
-      <div style={{ marginTop: 12 }}>
-        R-18：{pendingSharedImport.r18Count}件
-      </div>
-    )}
-
-    {pendingSharedImport.violenceCount > 0 && (
-      <div style={{ marginTop: 4 }}>
-        暴力表現：{pendingSharedImport.violenceCount}件
-      </div>
-    )}
-
-    {pendingSharedImport.bugCount > 0 && (
-  <div style={{ marginTop: 4 }}>
-    虫：{pendingSharedImport.bugCount}件
-  </div>
-)}
-
-    {pendingSharedImport.contentUnverifiableCount > 0 && (
-  <div style={{ marginTop: 4 }}>
-    コンテンツ確認不能：
-    {pendingSharedImport.contentUnverifiableCount}件
-  </div>
-)}
-    
-{pendingSharedImport.thumbnailNotFoundCount > 0 && (
-  <div style={{ marginTop: 12, fontWeight: 700 }}>
-    サムネイル画像をリンク先で確認できないカードがありました。元の所有者が画像を差し替えた可能性があります
-  </div>
-)}
-
-{pendingSharedImport.thumbnailNotFoundCount > 0 && (
-  <div style={{ marginTop: 4 }}>
-    サムネイル画像未検知：
-    {pendingSharedImport.thumbnailNotFoundCount}件
-  </div>
-)}
-
-{pendingSharedImport.thumbnailUnverifiableCount > 0 && (
-  <>
-    {pendingSharedImport.thumbnailNotFoundCount === 0 && (
-      <div style={{ marginTop: 12, fontWeight: 700 }}>
-        サムネイル画像を確認できないカードがあります。
-      </div>
-    )}
-
-    <div style={{ marginTop: 4 }}>
-      サムネイル確認不能：
-      {pendingSharedImport.thumbnailUnverifiableCount}件
+    <div style={{ fontWeight: 700 }}>
+      共有ジャンルを取り込む前にご確認ください
     </div>
-  </>
-)}
 
-<div style={{ marginTop: 12 }}>
-  「除外して取り込む」を選ぶと、有害コンテンツ判定または
-  サムネイル画像未検知のカードを除外します。
-  リンク先を確認できなかったカードは除外されません。
-</div>
+    <div style={{ marginTop: 12 }}>
+      共有ジャンルには、外部サイトへのリンクや画像が
+      含まれています。
+    </div>
+
+    <div style={{ marginTop: 8 }}>
+      取り込み時に安全確認を行いますが、
+      すべての危険性を検出できるとは限りません。
+      内容を確認したうえで取り込んでください。
+    </div>
 
     <div
       style={{
@@ -838,26 +851,15 @@ disabled={
       <button
         type="button"
         className="btn primary"
-        onClick={() => finishSharedImport(true)}
-        disabled={sharedImporting}
+        onClick={acceptSharedImportWarning}
       >
-        除外して取り込む
+        確認して続ける
       </button>
 
       <button
         type="button"
         className="btn"
-        onClick={() => finishSharedImport(false)}
-        disabled={sharedImporting}
-      >
-        すべて取り込む
-      </button>
-
-      <button
-        type="button"
-        className="btn"
-        onClick={cancelSharedImport}
-        disabled={sharedImporting}
+        onClick={cancelSharedImportWarning}
       >
         キャンセル
       </button>
@@ -865,6 +867,151 @@ disabled={
   </div>
 )}
       
+      {pendingSharedImport && (
+        <div
+          style={{
+            marginTop: 16,
+            padding: 16,
+            borderRadius: 12,
+            border: "1px solid #d6b76c",
+            background: "#fff8e6",
+          }}
+        >
+          {(pendingSharedImport.r18Count > 0 ||
+            pendingSharedImport.violenceCount > 0 ||
+            pendingSharedImport.bugCount > 0) && (
+            <div style={{ fontWeight: 700 }}>
+              有害コンテンツを含む可能性のあるカードが
+              検出されました。
+            </div>
+          )}
+
+          {pendingSharedImport.r18Count > 0 && (
+            <div style={{ marginTop: 12 }}>
+              R-18：{pendingSharedImport.r18Count}件
+            </div>
+          )}
+
+          {pendingSharedImport.violenceCount > 0 && (
+            <div style={{ marginTop: 4 }}>
+              暴力表現：
+              {pendingSharedImport.violenceCount}件
+            </div>
+          )}
+
+          {pendingSharedImport.bugCount > 0 && (
+            <div style={{ marginTop: 4 }}>
+              虫：{pendingSharedImport.bugCount}件
+            </div>
+          )}
+
+          {pendingSharedImport.contentUnverifiableCount >
+            0 && (
+            <div style={{ marginTop: 4 }}>
+              コンテンツ確認不能：
+              {
+                pendingSharedImport.contentUnverifiableCount
+              }
+              件
+            </div>
+          )}
+
+          {pendingSharedImport.thumbnailNotFoundCount >
+            0 && (
+            <div
+              style={{
+                marginTop: 12,
+                fontWeight: 700,
+              }}
+            >
+              サムネイル画像をリンク先で確認できない
+              カードがありました。元の所有者が画像を
+              差し替えた可能性があります
+            </div>
+          )}
+
+          {pendingSharedImport.thumbnailNotFoundCount >
+            0 && (
+            <div style={{ marginTop: 4 }}>
+              サムネイル画像未検知：
+              {
+                pendingSharedImport.thumbnailNotFoundCount
+              }
+              件
+            </div>
+          )}
+
+          {pendingSharedImport.thumbnailUnverifiableCount >
+            0 && (
+            <>
+              {pendingSharedImport.thumbnailNotFoundCount ===
+                0 && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    fontWeight: 700,
+                  }}
+                >
+                  サムネイル画像を確認できないカードが
+                  あります。
+                </div>
+              )}
+
+              <div style={{ marginTop: 4 }}>
+                サムネイル確認不能：
+                {
+                  pendingSharedImport
+                    .thumbnailUnverifiableCount
+                }
+                件
+              </div>
+            </>
+          )}
+
+          <div style={{ marginTop: 12 }}>
+            「除外して取り込む」を選ぶと、
+            有害コンテンツ判定またはサムネイル画像未検知の
+            カードを除外します。リンク先を確認できなかった
+            カードは除外されません。
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              marginTop: 16,
+            }}
+          >
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => finishSharedImport(true)}
+              disabled={sharedImporting}
+            >
+              除外して取り込む
+            </button>
+
+            <button
+              type="button"
+              className="btn"
+              onClick={() => finishSharedImport(false)}
+              disabled={sharedImporting}
+            >
+              すべて取り込む
+            </button>
+
+            <button
+              type="button"
+              className="btn"
+              onClick={cancelSharedImport}
+              disabled={sharedImporting}
+            >
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )}
 </div>
@@ -883,7 +1030,13 @@ disabled={
     {sharedImportResult}
   </div>
 )}
-        
+
+        </>
+)}
+
+{backupTab === "export" && (
+  <>
+    
 <div className="panel" style={{ marginBottom: 24 }}>
   <h2>ジャンル共有</h2>
 
@@ -917,7 +1070,9 @@ disabled={
     共有用JSONを書き出す
   </button>
 </div>
-        
+
+    <div className="panel" style={{ marginTop: 24 }}>
+      
         <h2>エクスポート</h2>
 
         <p>
@@ -931,7 +1086,9 @@ disabled={
         >
           バックアップを書き出す
         </button>
-      </div>
+</div>
+      </>
+)}
     </main>
   );
 }
