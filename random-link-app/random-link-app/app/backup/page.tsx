@@ -12,6 +12,8 @@ import {
 
 import { useEffect, useState } from "react";
 
+import { compareImages } from "@/lib/compare-images";
+
 export default function BackupPage() {
   
 const [importData, setImportData] = useState<ClientBackupData | null>(null);
@@ -39,6 +41,17 @@ type SharedContentCheckResult = {
   r18: boolean;
   violent: boolean;
   bug: boolean;
+  unverifiable: boolean;
+};
+
+type SharedThumbnailCheckResult = {
+  id: number;
+  status:
+    | "matched"
+    | "not_found"
+    | "unverifiable"
+    | "embedded";
+  candidates?: string[];
 };
 
 type PendingSharedImport = {
@@ -46,9 +59,13 @@ type PendingSharedImport = {
   safeUrls: string[];
   blockedCount: number;
   contentResults: SharedContentCheckResult[];
+  thumbnailResults: SharedThumbnailCheckResult[];
   r18Count: number;
   violenceCount: number;
   bugCount: number;
+  thumbnailNotFoundCount: number;
+  thumbnailUnverifiableCount: number;
+  contentUnverifiableCount: number;
 };
 
 const [pendingSharedImport, setPendingSharedImport] =
@@ -203,6 +220,41 @@ async function runImport() {
   }
   }
 
+  async function resolveEmbeddedThumbnail(
+  thumbnailUrl: string,
+  candidates: string[],
+): Promise<"matched" | "not_found" | "unverifiable"> {
+  if (candidates.length === 0) {
+    return "unverifiable";
+  }
+
+  let compared = false;
+
+  for (const candidate of candidates) {
+    try {
+      const proxiedCandidate =
+        "/api/image-proxy?url=" +
+        encodeURIComponent(candidate);
+
+      const difference = await compareImages(
+        thumbnailUrl,
+        proxiedCandidate,
+      );
+
+      compared = true;
+
+      // 同一画像のリサイズ・JPEG再圧縮などを許容する。
+      if (difference <= 0.15) {
+        return "matched";
+      }
+    } catch {
+      // 1候補の取得失敗では中断せず、次の候補を試す。
+    }
+  }
+
+  return compared ? "not_found" : "unverifiable";
+  }
+
    async function runSharedImport() {
     if (!sharedImportData) {
       return;
@@ -265,9 +317,14 @@ async function runImport() {
         }));
 
 let contentResults: SharedContentCheckResult[] = [];
+let thumbnailResults: SharedThumbnailCheckResult[] = [];
+
 let r18Count = 0;
 let violenceCount = 0;
 let bugCount = 0;
+let thumbnailNotFoundCount = 0;
+let thumbnailUnverifiableCount = 0;
+let contentUnverifiableCount = 0;
 
       if (contentItems.length > 0) {
         const contentRes = await fetch("/api/check-content", {
@@ -296,17 +353,110 @@ contentResults = contentData.results;
 r18Count = contentData.r18Count ?? 0;
 violenceCount = contentData.violenceCount ?? 0;
 bugCount = contentData.bugCount ?? 0;
+contentUnverifiableCount =
+contentData.unverifiableCount ?? 0;
       }
 
-if (r18Count > 0 || violenceCount > 0 || bugCount > 0) {
+const thumbnailItems = sharedImportData.links
+  .map((link, index) => ({
+    link,
+    index,
+  }))
+  .filter(
+    ({ link }) =>
+      safeUrlSet.has(link.url) &&
+      typeof link.thumbnail_url === "string" &&
+      link.thumbnail_url.trim(),
+  )
+  .map(({ link, index }) => ({
+    id: index,
+    url: link.url,
+    thumbnailUrl: link.thumbnail_url!.trim(),
+  }));
+
+if (thumbnailItems.length > 0) {
+  const thumbnailRes = await fetch("/api/check-thumbnails", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      items: thumbnailItems,
+    }),
+  });
+
+  const thumbnailData = await thumbnailRes.json();
+
+  if (!thumbnailRes.ok) {
+    throw new Error(
+      thumbnailData.error ||
+        "サムネイル画像を確認できませんでした。",
+    );
+  }
+
+  if (!Array.isArray(thumbnailData.results)) {
+    throw new Error("サムネイル画像の確認結果が不正です。");
+  }
+
+thumbnailResults = thumbnailData.results;
+
+  thumbnailResults = thumbnailData.results;
+
+for (const item of thumbnailResults) {
+  if (item.status !== "embedded") {
+    continue;
+  }
+
+  const source = thumbnailItems.find(
+    (thumbnailItem) =>
+      thumbnailItem.id === item.id,
+  );
+
+  if (!source) {
+    item.status = "unverifiable";
+    continue;
+  }
+
+  item.status = await resolveEmbeddedThumbnail(
+    source.thumbnailUrl,
+    Array.isArray(item.candidates)
+      ? item.candidates
+      : [],
+  );
+}
+
+  console.log(
+  "THUMBNAIL RESULTS",
+  thumbnailResults,
+);
+thumbnailNotFoundCount = thumbnailResults.filter(
+  (item) => item.status === "not_found",
+).length;
+
+  thumbnailUnverifiableCount = thumbnailResults.filter(
+    (item) => item.status === "unverifiable",
+  ).length;
+}
+if (
+  r18Count > 0 ||
+  violenceCount > 0 ||
+  bugCount > 0 ||
+  contentUnverifiableCount > 0 ||
+  thumbnailNotFoundCount > 0 ||
+  thumbnailUnverifiableCount > 0
+) {
   setPendingSharedImport({
     targetGenre,
     safeUrls,
     blockedCount,
     contentResults,
+    thumbnailResults,
     r18Count,
     violenceCount,
     bugCount,
+    contentUnverifiableCount,
+    thumbnailNotFoundCount,
+    thumbnailUnverifiableCount,
   });
 
   return;
@@ -354,9 +504,17 @@ if (r18Count > 0 || violenceCount > 0 || bugCount > 0) {
 
     try {
 const excludedIndexes = excludeFlagged
-  ? pendingSharedImport.contentResults
-      .filter((item) => item.r18 || item.violent || item.bug)
-      .map((item) => item.id)
+  ? Array.from(
+      new Set([
+        ...pendingSharedImport.contentResults
+          .filter((item) => item.r18 || item.violent || item.bug)
+          .map((item) => item.id),
+
+...pendingSharedImport.thumbnailResults
+  .filter((item) => item.status === "not_found")
+  .map((item) => item.id),
+      ]),
+    )
   : [];
 
 const targetGenre = sharedImportGenreName.trim();
@@ -378,7 +536,7 @@ const result = await importClientSharedGenre(
       setSharedImportResult(
         `${result.addedLinks}件取り込み、` +
           `${pendingSharedImport.blockedCount}件をWeb Riskでブロック、` +
-          `${contentBlockedCount}件を有害コンテンツ判定で除外しました。`,
+`${contentBlockedCount}件を安全確認で除外しました。`,
       );
 
       const records = await getClientGenreRecords();
@@ -599,9 +757,16 @@ disabled={
       background: "#fff8e6",
     }}
   >
-    <div style={{ fontWeight: 700 }}>
-      有害コンテンツを含む可能性のあるカードが検出されました。
-    </div>
+
+{(
+  pendingSharedImport.r18Count > 0 ||
+  pendingSharedImport.violenceCount > 0 ||
+  pendingSharedImport.bugCount > 0
+) && (
+  <div style={{ fontWeight: 700 }}>
+    有害コンテンツを含む可能性のあるカードが検出されました。
+  </div>
+)}
 
     {pendingSharedImport.r18Count > 0 && (
       <div style={{ marginTop: 12 }}>
@@ -620,10 +785,47 @@ disabled={
     虫：{pendingSharedImport.bugCount}件
   </div>
 )}
+
+    {pendingSharedImport.contentUnverifiableCount > 0 && (
+  <div style={{ marginTop: 4 }}>
+    コンテンツ確認不能：
+    {pendingSharedImport.contentUnverifiableCount}件
+  </div>
+)}
     
-    <div style={{ marginTop: 12 }}>
-      これらのカードを含めて取り込みますか？
+{pendingSharedImport.thumbnailNotFoundCount > 0 && (
+  <div style={{ marginTop: 12, fontWeight: 700 }}>
+    サムネイル画像をリンク先で確認できないカードがありました。元の所有者が画像を差し替えた可能性があります
+  </div>
+)}
+
+{pendingSharedImport.thumbnailNotFoundCount > 0 && (
+  <div style={{ marginTop: 4 }}>
+    サムネイル画像未検知：
+    {pendingSharedImport.thumbnailNotFoundCount}件
+  </div>
+)}
+
+{pendingSharedImport.thumbnailUnverifiableCount > 0 && (
+  <>
+    {pendingSharedImport.thumbnailNotFoundCount === 0 && (
+      <div style={{ marginTop: 12, fontWeight: 700 }}>
+        サムネイル画像を確認できないカードがあります。
+      </div>
+    )}
+
+    <div style={{ marginTop: 4 }}>
+      サムネイル確認不能：
+      {pendingSharedImport.thumbnailUnverifiableCount}件
     </div>
+  </>
+)}
+
+<div style={{ marginTop: 12 }}>
+  「除外して取り込む」を選ぶと、有害コンテンツ判定または
+  サムネイル画像未検知のカードを除外します。
+  リンク先を確認できなかったカードは除外されません。
+</div>
 
     <div
       style={{

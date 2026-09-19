@@ -59,6 +59,7 @@ export async function POST(req: Request) {
         r18Count: 0,
         violenceCount: 0,
         bugCount: 0,
+        unverifiableCount: 0,
       });
     }
 
@@ -71,29 +72,49 @@ export async function POST(req: Request) {
       );
     }
 
-    const results = [];
+const results = [];
 
-    for (const item of items) {
-      const safeSearch = await checkSafeSearch(item.imageUrl);
+for (const item of items) {
+  try {
+    const safeSearch = await checkSafeSearch(item.imageUrl);
 
-      results.push({
-        id: item.id,
-        r18: safeSearch.r18,
-        violent: safeSearch.violent,
-        bug: safeSearch.bug,
-      });
-    }
+    results.push({
+      id: item.id,
+      r18: safeSearch.r18,
+      violent: safeSearch.violent,
+      bug: safeSearch.bug,
+      unverifiable: false,
+    });
+  } catch (error) {
+    console.error(
+      `Cloud Vision check failed for item ${item.id}:`,
+      error,
+    );
+
+    results.push({
+      id: item.id,
+      r18: false,
+      violent: false,
+      bug: false,
+      unverifiable: true,
+    });
+  }
+}
 
     const r18Count = results.filter((item) => item.r18).length;
     const violenceCount = results.filter((item) => item.violent).length;
     const bugCount = results.filter((item) => item.bug).length;
-
-    return NextResponse.json({
-      results,
-      r18Count,
-      violenceCount,
-      bugCount,
-    });
+    const unverifiableCount = results.filter(
+    (item) => item.unverifiable,
+    ).length;
+    
+return NextResponse.json({
+  results,
+  r18Count,
+  violenceCount,
+  bugCount,
+  unverifiableCount,
+});
   } catch (e) {
     return NextResponse.json(
       {

@@ -217,22 +217,32 @@ async function submit(e: FormEvent) {
   setMessage(null);
 
 try {
-  // 登録直前にもWeb Riskチェックを通す
-  const safetyRes = await fetch("/api/scan-images", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ url }),
-  });
+// 登録直前はページ取得を行わず、Web Riskだけを確認する。
+// ページ側が403などでメタデータ取得を拒否していても、
+// Web Riskで安全なら登録できるようにする。
+const safetyRes = await fetch("/api/check-urls", {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({ urls: [url] }),
+});
 
-  const safetyData = await safetyRes.json();
+const safetyData = await safetyRes.json();
 
-  if (!safetyRes.ok) {
-    throw new Error(
-      safetyData.error || "URLの安全性を確認できませんでした。"
-    );
-  }
+if (!safetyRes.ok) {
+  throw new Error(
+    safetyData.error || "URLの安全性を確認できません。"
+  );
+}
+
+const safetyResult = safetyData.results?.[0];
+
+if (!safetyResult?.safe) {
+  throw new Error(
+    "安全でない可能性があるURLのため登録できません。"
+  );
+}
 
   let finalGenre = genre;
   const name = newGenre.trim();

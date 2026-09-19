@@ -33,7 +33,9 @@ function isPrivateIPv6(ip: string) {
   );
 }
 
-async function assertSafeUrl(raw: string): Promise<URL> {
+export async function assertSafeUrl(
+  raw: string,
+): Promise<URL> {
   let url: URL;
   try {
     url = new URL(raw);
