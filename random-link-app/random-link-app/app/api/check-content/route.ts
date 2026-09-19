@@ -58,6 +58,7 @@ export async function POST(req: Request) {
         results: [],
         r18Count: 0,
         violenceCount: 0,
+        bugCount: 0,
       });
     }
 
@@ -79,16 +80,19 @@ export async function POST(req: Request) {
         id: item.id,
         r18: safeSearch.r18,
         violent: safeSearch.violent,
+        bug: safeSearch.bug,
       });
     }
 
     const r18Count = results.filter((item) => item.r18).length;
     const violenceCount = results.filter((item) => item.violent).length;
+    const bugCount = results.filter((item) => item.bug).length;
 
     return NextResponse.json({
       results,
       r18Count,
       violenceCount,
+      bugCount,
     });
   } catch (e) {
     return NextResponse.json(

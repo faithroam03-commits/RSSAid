@@ -38,6 +38,7 @@ type SharedContentCheckResult = {
   id: number;
   r18: boolean;
   violent: boolean;
+  bug: boolean;
 };
 
 type PendingSharedImport = {
@@ -47,6 +48,7 @@ type PendingSharedImport = {
   contentResults: SharedContentCheckResult[];
   r18Count: number;
   violenceCount: number;
+  bugCount: number;
 };
 
 const [pendingSharedImport, setPendingSharedImport] =
@@ -262,9 +264,10 @@ async function runImport() {
           imageUrl: link.thumbnail_url!.trim(),
         }));
 
-      let contentResults: SharedContentCheckResult[] = [];
-      let r18Count = 0;
-      let violenceCount = 0;
+let contentResults: SharedContentCheckResult[] = [];
+let r18Count = 0;
+let violenceCount = 0;
+let bugCount = 0;
 
       if (contentItems.length > 0) {
         const contentRes = await fetch("/api/check-content", {
@@ -289,23 +292,25 @@ async function runImport() {
           throw new Error("コンテンツの安全性確認結果が不正です。");
         }
 
-        contentResults = contentData.results;
-        r18Count = contentData.r18Count ?? 0;
-        violenceCount = contentData.violenceCount ?? 0;
+contentResults = contentData.results;
+r18Count = contentData.r18Count ?? 0;
+violenceCount = contentData.violenceCount ?? 0;
+bugCount = contentData.bugCount ?? 0;
       }
 
-      if (r18Count > 0 || violenceCount > 0) {
-        setPendingSharedImport({
-          targetGenre,
-          safeUrls,
-          blockedCount,
-          contentResults,
-          r18Count,
-          violenceCount,
-        });
+if (r18Count > 0 || violenceCount > 0 || bugCount > 0) {
+  setPendingSharedImport({
+    targetGenre,
+    safeUrls,
+    blockedCount,
+    contentResults,
+    r18Count,
+    violenceCount,
+    bugCount,
+  });
 
-        return;
-      }
+  return;
+}
 
       const result = await importClientSharedGenre(
         sharedImportData,
@@ -348,18 +353,25 @@ async function runImport() {
     setSharedImportResult("");
 
     try {
-      const excludedIndexes = excludeFlagged
-        ? pendingSharedImport.contentResults
-            .filter((item) => item.r18 || item.violent)
-            .map((item) => item.id)
-        : [];
+const excludedIndexes = excludeFlagged
+  ? pendingSharedImport.contentResults
+      .filter((item) => item.r18 || item.violent || item.bug)
+      .map((item) => item.id)
+  : [];
 
-      const result = await importClientSharedGenre(
-        sharedImportData,
-        pendingSharedImport.targetGenre,
-        pendingSharedImport.safeUrls,
-        excludedIndexes,
-      );
+const targetGenre = sharedImportGenreName.trim();
+
+if (!targetGenre) {
+  throw new Error("取り込み先ジャンル名を入力してください。");
+}
+
+const result = await importClientSharedGenre(
+  sharedImportData,
+  targetGenre,
+  pendingSharedImport.safeUrls,
+  excludedIndexes,
+);
+      
 
       const contentBlockedCount = excludedIndexes.length;
 
@@ -603,6 +615,12 @@ disabled={
       </div>
     )}
 
+    {pendingSharedImport.bugCount > 0 && (
+  <div style={{ marginTop: 4 }}>
+    虫：{pendingSharedImport.bugCount}件
+  </div>
+)}
+    
     <div style={{ marginTop: 12 }}>
       これらのカードを含めて取り込みますか？
     </div>
