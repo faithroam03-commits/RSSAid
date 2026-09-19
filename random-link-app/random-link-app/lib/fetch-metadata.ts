@@ -95,6 +95,132 @@ function absoluteUrl(value: string | undefined, base: URL): string | null {
   }
 }
 
+async function fetchFrameImageCandidates(
+  frameUrl: string,
+  redirectCount = 0,
+): Promise<string[]> {
+  const safeUrl = await assertSafeUrl(frameUrl);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  try {
+    const res = await fetch(safeUrl, {
+      redirect: "manual",
+      signal: controller.signal,
+      headers: {
+        "user-agent": "RandomLinkApp/0.1 (+personal bookmark preview)",
+      },
+    });
+
+    // frameのリダイレクト先も再度SSRFチェックする。
+    if (res.status >= 300 && res.status < 400) {
+      if (redirectCount >= MAX_REDIRECTS) {
+        return [];
+      }
+
+      const location = res.headers.get("location");
+
+      if (!location) {
+        return [];
+      }
+
+      const next = new URL(location, safeUrl).toString();
+
+      await assertSafeUrl(next);
+
+      return fetchFrameImageCandidates(
+        next,
+        redirectCount + 1,
+      );
+    }
+
+    if (!res.ok) {
+      return [];
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+
+    if (
+      !contentType.includes("text/html") &&
+      !contentType.includes("application/xhtml+xml")
+    ) {
+      return [];
+    }
+
+    const reader = res.body?.getReader();
+
+    if (!reader) {
+      return [];
+    }
+
+    let total = 0;
+    const chunks: Uint8Array[] = [];
+
+    while (true) {
+      const { value, done } = await reader.read();
+
+      if (done) break;
+
+      if (value) {
+        total += value.byteLength;
+
+        if (total > MAX_HTML_BYTES) {
+          await reader.cancel();
+          return [];
+        }
+
+        chunks.push(value);
+      }
+    }
+
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
+    // frame内では画像URLの抽出だけが目的なので、
+    // HTMLタグを認識できればよい。
+    const html = new TextDecoder("latin1").decode(bytes);
+    const $ = cheerio.load(html);
+
+    const candidates = new Set<string>();
+
+    $("img").each((_, el) => {
+      if (candidates.size >= 30) return;
+
+      const values = [
+        $(el).attr("src"),
+        $(el).attr("data-src"),
+        $(el).attr("data-lazy-src"),
+        $(el).attr("data-original"),
+      ];
+
+      for (const value of values) {
+        if (candidates.size >= 30) break;
+
+        const abs = absoluteUrl(
+          value?.trim(),
+          safeUrl,
+        );
+
+        if (abs) {
+          candidates.add(abs);
+        }
+      }
+    });
+
+    return [...candidates];
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
   const initialUrl = await assertSafeUrl(rawUrl);
   const controller = new AbortController();
@@ -156,7 +282,70 @@ if (res.status >= 300 && res.status < 400) {
       offset += chunk.byteLength;
     }
 
-    const html = new TextDecoder("utf-8").decode(bytes);
+    // HTTPヘッダーまたはHTML内のmetaタグから文字コードを判定する。
+    // 古い日本語サイトのShift_JIS / Windows-31Jにも対応する。
+    let charset = "";
+
+    const headerCharset = contentType.match(
+      /charset\s*=\s*["']?\s*([^;"'\s]+)/i,
+    );
+
+    if (headerCharset?.[1]) {
+      charset = headerCharset[1].toLowerCase();
+    }
+
+    if (!charset) {
+      // charset宣言部分はASCII文字なので、判定用として先頭部分だけ
+      // latin1で読み取る。
+      const headBytes = bytes.slice(0, Math.min(bytes.length, 8192));
+      const headText = new TextDecoder("latin1").decode(headBytes);
+
+      const metaCharset = headText.match(
+        /<meta[^>]+charset\s*=\s*["']?\s*([^"'\s/>;]+)/i,
+      );
+
+      const httpEquivCharset = headText.match(
+        /<meta[^>]+http-equiv\s*=\s*["']?content-type["']?[^>]+content\s*=\s*["'][^"']*charset\s*=\s*([^"'\s;>]+)/i,
+      );
+
+      charset = (
+        metaCharset?.[1] ||
+        httpEquivCharset?.[1] ||
+        ""
+      ).toLowerCase();
+    }
+
+    let decoderEncoding = "utf-8";
+
+    if (
+      charset === "shift_jis" ||
+      charset === "shift-jis" ||
+      charset === "sjis" ||
+      charset === "windows-31j" ||
+      charset === "cp932" ||
+      charset === "ms932"
+    ) {
+      decoderEncoding = "shift_jis";
+    } else if (
+      charset === "euc-jp" ||
+      charset === "euc_jp"
+    ) {
+      decoderEncoding = "euc-jp";
+    } else if (
+      charset === "iso-2022-jp"
+    ) {
+      decoderEncoding = "iso-2022-jp";
+    }
+
+    let html: string;
+
+    try {
+      html = new TextDecoder(decoderEncoding).decode(bytes);
+    } catch {
+      // 未対応・不明なcharsetなら従来どおりUTF-8として処理する。
+      html = new TextDecoder("utf-8").decode(bytes);
+    }
+
     const $ = cheerio.load(html);
 
     const title =
@@ -261,6 +450,42 @@ $("[style]").each((_, el) => {
     }
   }
 });
+
+        // 古いframesetサイトに対応。
+    // 無制限には巡回せず、トップページ直下のframeを最大3件だけ確認する。
+    const frameUrls: string[] = [];
+
+    $("frame[src]").each((_, el) => {
+      if (frameUrls.length >= 3) return;
+
+      const frameUrl = absoluteUrl(
+        $(el).attr("src")?.trim(),
+        initialUrl,
+      );
+
+      if (frameUrl) {
+        frameUrls.push(frameUrl);
+      }
+    });
+
+    for (const frameUrl of frameUrls) {
+      if (candidates.size >= 30) break;
+
+      try {
+        // frame先もSSRFチェックしてから取得する。
+        await assertSafeUrl(frameUrl);
+
+        const frameImages =
+          await fetchFrameImageCandidates(frameUrl);
+
+        for (const frameImage of frameImages) {
+          if (candidates.size >= 30) break;
+          candidates.add(frameImage);
+        }
+      } catch {
+        // frameを取得できなくても元ページの解析結果は返す。
+      }
+    }
     
     return {
       finalUrl: initialUrl.toString(),
