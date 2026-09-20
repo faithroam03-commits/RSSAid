@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { checkSafeSearch } from "@/lib/check-safe-search";
 
-const MAX_IMAGES = 200;
+const MAX_IMAGES = 30;
+
+type RateLimitBinding = {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+};
 
 type ContentCheckItem = {
   id: number;
@@ -10,6 +14,36 @@ type ContentCheckItem = {
 
 export async function POST(req: Request) {
   try {
+    let limiter: RateLimitBinding | undefined;
+
+    if (process.env.NODE_ENV === "production") {
+      const { getCloudflareContext } = await import(
+        "@opennextjs/cloudflare"
+      );
+
+      const { env } = await getCloudflareContext({ async: true });
+
+      limiter = (env as CloudflareEnv & {
+        VISION_RATE_LIMITER?: RateLimitBinding;
+      }).VISION_RATE_LIMITER;
+    }
+
+    if (limiter) {
+      const { success } = await limiter.limit({
+        key: "check-content",
+      });
+
+      if (!success) {
+        return NextResponse.json(
+          {
+            error:
+              "コンテンツ確認が集中しています。少し待ってから再試行してください。",
+          },
+          { status: 429 },
+        );
+      }
+    }
+
     const body = await req.json();
 
     if (!Array.isArray(body.items)) {

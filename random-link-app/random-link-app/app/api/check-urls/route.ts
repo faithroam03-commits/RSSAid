@@ -1,10 +1,44 @@
 import { NextResponse } from "next/server";
 import { checkWebRisk } from "@/lib/check-web-risk";
 
-const MAX_URLS = 200;
+const MAX_URLS = 100;
+
+type RateLimitBinding = {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+};
 
 export async function POST(req: Request) {
   try {
+    let limiter: RateLimitBinding | undefined;
+
+    if (process.env.NODE_ENV === "production") {
+      const { getCloudflareContext } = await import(
+        "@opennextjs/cloudflare"
+      );
+
+      const { env } = await getCloudflareContext({ async: true });
+
+      limiter = (env as CloudflareEnv & {
+        WEB_RISK_RATE_LIMITER?: RateLimitBinding;
+      }).WEB_RISK_RATE_LIMITER;
+    }
+
+    if (limiter) {
+      const { success } = await limiter.limit({
+        key: "check-urls",
+      });
+
+      if (!success) {
+        return NextResponse.json(
+          {
+            error:
+    "URLの安全確認が集中しています。少し待ってから再試行してください。",
+          },
+          { status: 429 },
+        );
+      }
+    }
+
     const body = await req.json();
 
     if (!Array.isArray(body.urls)) {

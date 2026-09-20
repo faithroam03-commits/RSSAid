@@ -308,27 +308,43 @@ async function runSharedImport(skipFirstWarning = false) {
     try {
       const urls = sharedImportData.links.map((link) => link.url);
 
-      const res = await fetch("/api/check-urls", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({ urls }),
-      });
+      const urlCheckResults: {
+        url: string;
+        safe: boolean;
+        threatTypes: string[];
+      }[] = [];
 
-      const data = await res.json();
+      const URL_BATCH_SIZE = 100;
 
-      if (!res.ok) {
-        throw new Error(data.error || "URLの安全性を確認できませんでした。");
+      for (let i = 0; i < urls.length; i += URL_BATCH_SIZE) {
+        const batch = urls.slice(i, i + URL_BATCH_SIZE);
+
+        const res = await fetch("/api/check-urls", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ urls: batch }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(
+            data.error || "URLの安全性を確認できませんでした。",
+          );
+        }
+
+        if (!Array.isArray(data.results)) {
+          throw new Error("URLの安全性確認結果が不正です。");
+        }
+
+        urlCheckResults.push(...data.results);
       }
 
-      if (!Array.isArray(data.results)) {
-        throw new Error("URLの安全性確認結果が不正です。");
-      }
-
-      const safeUrls = data.results
-        .filter((result: { url: string; safe: boolean }) => result.safe)
-        .map((result: { url: string; safe: boolean }) => result.url);
+      const safeUrls = urlCheckResults
+        .filter((result) => result.safe)
+        .map((result) => result.url);
 
       const blockedCount = sharedImportData.links.length - safeUrls.length;
 
@@ -361,34 +377,44 @@ let thumbnailUnverifiableCount = 0;
 let contentUnverifiableCount = 0;
 
       if (contentItems.length > 0) {
-        const contentRes = await fetch("/api/check-content", {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            items: contentItems,
-          }),
-        });
+        const CONTENT_BATCH_SIZE = 30;
 
-        const contentData = await contentRes.json();
+        for (let i = 0; i < contentItems.length; i += CONTENT_BATCH_SIZE) {
+          const batch = contentItems.slice(i, i + CONTENT_BATCH_SIZE);
 
-        if (!contentRes.ok) {
-          throw new Error(
-            contentData.error || "コンテンツの安全性を確認できませんでした。",
-          );
+          const contentRes = await fetch("/api/check-content", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              items: batch,
+            }),
+          });
+
+          const contentData = await contentRes.json();
+
+          if (!contentRes.ok) {
+            throw new Error(
+              contentData.error ||
+                "コンテンツの安全性を確認できませんでした。",
+            );
+          }
+
+          if (!Array.isArray(contentData.results)) {
+            throw new Error(
+              "コンテンツの安全性確認結果が不正です。",
+            );
+          }
+
+          contentResults.push(...contentData.results);
+
+          r18Count += contentData.r18Count ?? 0;
+          violenceCount += contentData.violenceCount ?? 0;
+          bugCount += contentData.bugCount ?? 0;
+          contentUnverifiableCount +=
+            contentData.unverifiableCount ?? 0;
         }
-
-        if (!Array.isArray(contentData.results)) {
-          throw new Error("コンテンツの安全性確認結果が不正です。");
-        }
-
-contentResults = contentData.results;
-r18Count = contentData.r18Count ?? 0;
-violenceCount = contentData.violenceCount ?? 0;
-bugCount = contentData.bugCount ?? 0;
-contentUnverifiableCount =
-contentData.unverifiableCount ?? 0;
       }
 
 const thumbnailItems = sharedImportData.links
