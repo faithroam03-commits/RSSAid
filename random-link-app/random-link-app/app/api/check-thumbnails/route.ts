@@ -9,6 +9,32 @@ type CheckItem = {
   thumbnailUrl: string;
 };
 
+function normalizeThumbnailUrl(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+
+    if (url.hostname !== "pbs.twimg.com") {
+      return rawUrl;
+    }
+
+    let pathname = url.pathname;
+
+    pathname = pathname.replace(
+      /:(large|small|medium|orig)$/i,
+      "",
+    );
+
+    pathname = pathname.replace(
+      /\.(jpg|jpeg|png|webp)$/i,
+      "",
+    );
+
+    return `${url.origin}${pathname}`;
+  } catch {
+    return rawUrl;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -91,7 +117,14 @@ if (item.thumbnailUrl.startsWith("data:image/")) {
           ),
         );
 
-        const matched = candidates.has(item.thumbnailUrl);
+        const normalizedThumbnail =
+        normalizeThumbnailUrl(item.thumbnailUrl);
+
+        const matched = Array.from(candidates).some(
+        (candidate) =>
+        normalizeThumbnailUrl(candidate) ===
+        normalizedThumbnail,
+        );
 
         results.push({
           id: item.id,
