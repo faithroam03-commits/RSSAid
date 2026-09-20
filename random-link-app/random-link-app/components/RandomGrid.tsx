@@ -68,11 +68,7 @@ const visibleItems = items.slice(0, visibleCount);
 </div>
 </div>
 ) : (
-<section
-  className={`randomGrid grid${gridSize} ${
-    visibleItems.length === 1 ? "singleItemGrid" : ""
-  }`}
->
+<section className={`randomGrid grid${gridSize}`}>
     {visibleItems.map((item) => (
       <a
         key={item.id}
