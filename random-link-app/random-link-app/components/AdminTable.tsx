@@ -5,11 +5,17 @@ import type { LinkRecord } from "@/lib/types";
 type Props = {
   links: LinkRecord[];
   onDelete: (id: number) => Promise<void>;
+  bulkMode: boolean;
+  selectedIds: Set<number>;
+  onToggleSelected: (id: number) => void;
 };
 
 export default function AdminTable({
   links,
   onDelete,
+  bulkMode,
+  selectedIds,
+  onToggleSelected,
 }: Props) {
   async function remove(id: number) {
     if (!confirm("このURLを削除しますか？")) {
@@ -29,8 +35,9 @@ export default function AdminTable({
       <div className="panel table-wrap">
         <table>
           <thead>
-            <tr>
-              <th>画像</th>
+<tr>
+  {bulkMode && <th>選択</th>}
+  <th>画像</th>
               <th>タイトル / URL</th>
               <th>ジャンル</th>
               <th>状態</th>
@@ -40,8 +47,21 @@ export default function AdminTable({
 
           <tbody>
             {links.map((item) => (
-              <tr key={item.id}>
-                <td>
+<tr key={item.id}>
+  {bulkMode && (
+    <td>
+      <input
+        type="checkbox"
+        checked={selectedIds.has(item.id)}
+        onChange={() =>
+          onToggleSelected(item.id)
+        }
+        aria-label={`${item.title}を選択`}
+      />
+    </td>
+  )}
+
+  <td>
                   {item.thumbnail_url ? (
                     <img
                       className="mini-thumb"
@@ -84,10 +104,23 @@ export default function AdminTable({
       </div>
     </div>
 
-    <div className="adminMobile">
-      {links.map((item) => (
-        <div className="panel adminCard" key={item.id}>
-          <div className="adminCardTop">
+<div className="adminMobile">
+  {links.map((item) => (
+    <div className="panel adminCard" key={item.id}>
+      {bulkMode && (
+        <label className="adminBulkCheck">
+          <input
+            type="checkbox"
+            checked={selectedIds.has(item.id)}
+            onChange={() =>
+              onToggleSelected(item.id)
+            }
+            aria-label={`${item.title}を選択`}
+          />
+        </label>
+      )}
+
+      <div className="adminCardTop">
             {item.thumbnail_url ? (
               <img
                 className="adminCardThumb"

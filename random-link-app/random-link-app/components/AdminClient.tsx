@@ -8,6 +8,7 @@ import {
   deleteClientLink,
   getClientGenres,
   getClientLinks,
+  updateClientLink,
 } from "@/lib/client-db";
 
 type Props = {
@@ -28,6 +29,9 @@ export default function AdminClient({
     Awaited<ReturnType<typeof getClientLinks>>
   >([]);
   const [loading, setLoading] = useState(true);
+const [bulkMode, setBulkMode] = useState(false);
+const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+const [bulkGenre, setBulkGenre] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -129,26 +133,137 @@ export default function AdminClient({
     current.filter((item) => item.id !== id)
   );
         }
+
+function toggleBulkMode() {
+  setBulkMode((current) => {
+    if (current) {
+      setSelectedIds(new Set());
+      setBulkGenre("");
+    }
+
+    return !current;
+  });
+}
+
+function closeBulkMode() {
+  setBulkMode(false);
+  setSelectedIds(new Set());
+  setBulkGenre("");
+}
+
+function toggleSelected(id: number) {
+  setSelectedIds((current) => {
+    const next = new Set(current);
+
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+
+    return next;
+  });
+}
+
+function toggleAllVisible() {
+  const visibleIds = links.map((item) => item.id);
+  const allSelected =
+    visibleIds.length > 0 &&
+    visibleIds.every((id) => selectedIds.has(id));
+
+  setSelectedIds((current) => {
+    const next = new Set(current);
+
+    if (allSelected) {
+      visibleIds.forEach((id) => next.delete(id));
+    } else {
+      visibleIds.forEach((id) => next.add(id));
+    }
+
+    return next;
+  });
+}
+
+async function moveSelectedLinks() {
+  if (!bulkGenre || selectedIds.size === 0) {
+    return;
+  }
+
+  try {
+    await Promise.all(
+      [...selectedIds].map((id) =>
+        updateClientLink(id, { genre: bulkGenre })
+      )
+    );
+
+    setAllLinks((current) =>
+      current.map((item) =>
+        selectedIds.has(item.id)
+          ? { ...item, genre: bulkGenre }
+          : item
+      )
+    );
+
+    setSelectedIds(new Set());
+    setBulkGenre("");
+  } catch {
+    alert("ジャンル移動に失敗しました。");
+  }
+}
+
+async function deleteSelectedLinks() {
+  if (selectedIds.size === 0) {
+    return;
+  }
+
+  if (
+    !confirm(
+      `選択した${selectedIds.size}件を削除しますか？`
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await Promise.all(
+      [...selectedIds].map((id) =>
+        deleteClientLink(id)
+      )
+    );
+
+    setAllLinks((current) =>
+      current.filter(
+        (item) => !selectedIds.has(item.id)
+      )
+    );
+
+    setSelectedIds(new Set());
+  } catch {
+    alert("一括削除に失敗しました。");
+  }
+}
   
   return (
     <>
       <h1>URLメンテナンス</h1>
 
       <nav className="genreTabs">
-        <Link
-          href={makeHref()}
-          className={`genreTab ${
-            !selectedGenre ? "active" : ""
-          }`}
-        >
+<Link
+  href={makeHref()}
+  onClick={closeBulkMode}
+  className={`genreTab ${
+    !selectedGenre ? "active" : ""
+  }`}
+>
           ALL
         </Link>
 
         {genres.map((genre) => (
-          <Link
-            key={genre}
-            href={makeHref(genre)}
-            className={`genreTab ${
+<Link
+  key={genre}
+  href={makeHref(genre)}
+  onClick={closeBulkMode}
+  className={`genreTab ${
               selectedGenre === genre
                 ? "active"
                 : ""
@@ -271,13 +386,82 @@ export default function AdminClient({
         </button>
       </form>
 
-      <p className="small">
-        現在 {links.length} 件登録されています。
-      </p>
+<div className="adminBulkHeader">
+  <p className="small">
+    現在 {links.length} 件登録されています。
+  </p>
 
-      <AdminTable
+  <button
+    type="button"
+    className="btn adminBulkToggle"
+    onClick={toggleBulkMode}
+  >
+    一括操作
+  </button>
+</div>
+
+      {bulkMode && (
+  <div className="panel adminBulkPanel">
+    <div className="adminBulkRow">
+      <button
+        type="button"
+        className="btn"
+        onClick={toggleAllVisible}
+        disabled={!links.length}
+      >
+        ☑ すべて選択
+      </button>
+
+      <span className="small">
+        {selectedIds.size}件選択中
+      </span>
+    </div>
+
+    <div className="actions">
+      <select
+        value={bulkGenre}
+        onChange={(event) =>
+          setBulkGenre(event.target.value)
+        }
+      >
+        <option value="">移動先ジャンル</option>
+
+        {genres.map((genre) => (
+          <option key={genre} value={genre}>
+            {genre}
+          </option>
+        ))}
+      </select>
+
+      <button
+        type="button"
+        className="btn"
+        onClick={moveSelectedLinks}
+        disabled={
+          !bulkGenre || selectedIds.size === 0
+        }
+      >
+        ジャンル移動
+      </button>
+
+      <button
+        type="button"
+        className="btn danger"
+        onClick={deleteSelectedLinks}
+        disabled={selectedIds.size === 0}
+      >
+        削除
+      </button>
+    </div>
+  </div>
+)}
+
+<AdminTable
   links={links}
   onDelete={removeLink}
+  bulkMode={bulkMode}
+  selectedIds={selectedIds}
+  onToggleSelected={toggleSelected}
 />
     </>
   );
