@@ -42,7 +42,11 @@ export default function Menu() {
       <Link href="/" onClick={closeMenu}>
        トップ
       </Link>
-      
+
+<Link href="/help" onClick={closeMenu}>
+  使い方
+</Link>
+
         <Link href="/register" onClick={closeMenu}>
           新規URL登録
         </Link>

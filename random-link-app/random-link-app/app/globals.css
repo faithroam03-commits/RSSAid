@@ -680,3 +680,60 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   margin: 0;
   cursor: pointer;
 }
+
+/* 使い方 */
+
+.helpPage {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.helpLead {
+  margin: 0 0 24px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+.helpSection {
+  margin: 0 0 18px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.helpSection h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.helpSection p {
+  margin: 0 0 12px;
+  line-height: 1.75;
+}
+
+.helpSection p:last-child {
+  margin-bottom: 0;
+}
+
+.helpNote {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.helpLink {
+  display: inline-block;
+  margin-top: 4px;
+  font-weight: 700;
+  color: #1677d2;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.helpGuideImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: 14px;
+}

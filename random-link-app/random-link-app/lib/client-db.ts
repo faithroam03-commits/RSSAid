@@ -40,22 +40,43 @@ function getClientDb() {
     "random-link-db",
     1,
     {
-      upgrade(db) {
-        const links = db.createObjectStore("links", {
-          keyPath: "id",
-          autoIncrement: true,
-        });
+upgrade(db) {
+  const links = db.createObjectStore("links", {
+    keyPath: "id",
+    autoIncrement: true,
+  });
 
-        links.createIndex("by-genre", "genre");
-        links.createIndex("by-enabled", "enabled");
+  links.createIndex("by-genre", "genre");
+  links.createIndex("by-enabled", "enabled");
 
-        const genres = db.createObjectStore("genres", {
-          keyPath: "id",
-          autoIncrement: true,
-        });
+  const genres = db.createObjectStore("genres", {
+    keyPath: "id",
+    autoIncrement: true,
+  });
 
-        genres.createIndex("by-sort-order", "sort_order");
-      },
+  genres.createIndex("by-sort-order", "sort_order");
+
+  const now = new Date().toISOString();
+  const initialId = Date.now();
+
+  genres.add({
+    id: initialId,
+    name: "New",
+    sort_order: 0,
+  });
+
+  links.add({
+    id: initialId + 1,
+    url: "/help",
+    title: "Random Linkの使い方",
+    thumbnail_url: "/help/random-link-guide.png",
+    image_fit: "contain",
+    genre: "New",
+    enabled: 1,
+    created_at: now,
+    updated_at: now,
+  });
+},
     }
   );
 }
