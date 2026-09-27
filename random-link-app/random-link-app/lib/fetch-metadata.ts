@@ -150,6 +150,11 @@ async function fetchBilibiliMetadata(
       },
     });
 
+console.log(
+  "Bilibili API response:",
+  res.status,
+);
+
     if (!res.ok) {
       return null;
     }
@@ -524,7 +529,11 @@ export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
       headers,
     });
 
-    // Redirect先も再検証してSSRFを防ぐ
+console.log(
+  "Page metadata response:",
+  initialUrl.hostname,
+  res.status,
+);
 
     // Redirect先も再検証してSSRFを防ぐ
 if (res.status >= 300 && res.status < 400) {
