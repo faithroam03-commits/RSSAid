@@ -1,6 +1,7 @@
 "use client";
 
 import type { LinkRecord } from "@/lib/types";
+import { getDisplayImageUrl } from "@/lib/display-image-url";
 
 export default function RandomCard({ item }: { item?: LinkRecord }) {
 
@@ -20,7 +21,7 @@ return (
         {item.thumbnail_url ? (
 <img
   className="thumb"
-  src={item.thumbnail_url}
+  src={getDisplayImageUrl(item.thumbnail_url)}
   alt=""
   referrerPolicy="no-referrer"
   style={{

@@ -97,6 +97,98 @@ function absoluteUrl(value: string | undefined, base: URL): string | null {
   }
 }
 
+type BilibiliMetadata = {
+  title: string;
+  thumbnailUrl: string;
+};
+
+function getBilibiliBvid(url: URL): string | null {
+  const hostname = url.hostname.toLowerCase();
+
+  if (
+    hostname !== "www.bilibili.com" &&
+    hostname !== "m.bilibili.com" &&
+    hostname !== "bilibili.com"
+  ) {
+    return null;
+  }
+
+  const match = url.pathname.match(
+    /\/video\/(BV[0-9A-Za-z]{10})(?:\/|$)/i,
+  );
+
+  return match?.[1] ?? null;
+}
+
+async function fetchBilibiliMetadata(
+  bvid: string,
+): Promise<BilibiliMetadata | null> {
+  const apiUrl = new URL(
+    "https://api.bilibili.com/x/web-interface/view",
+  );
+
+  apiUrl.searchParams.set("bvid", bvid);
+
+  // APIの接続先も通常URLと同様にSSRFチェックする。
+  await assertSafeUrl(apiUrl.toString());
+
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(),
+    TIMEOUT_MS,
+  );
+
+  try {
+    const res = await fetch(apiUrl, {
+      signal: controller.signal,
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 " +
+          "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+        referer: `https://www.bilibili.com/video/${bvid}/`,
+        accept: "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const json = (await res.json()) as {
+      code?: number;
+      data?: {
+        title?: string;
+        pic?: string;
+      };
+    };
+
+    if (
+      json.code !== 0 ||
+      !json.data ||
+      typeof json.data.title !== "string" ||
+      typeof json.data.pic !== "string"
+    ) {
+      return null;
+    }
+
+    const title = json.data.title.trim();
+    const thumbnailUrl = json.data.pic.trim();
+
+    if (!title || !thumbnailUrl) {
+      return null;
+    }
+
+    return {
+      title,
+      thumbnailUrl,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchFrameImageCandidates(
   frameUrl: string,
   redirectCount = 0,
@@ -225,6 +317,25 @@ async function fetchFrameImageCandidates(
 
 export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
   const initialUrl = await assertSafeUrl(rawUrl);
+
+  const bilibiliBvid = getBilibiliBvid(initialUrl);
+
+  if (bilibiliBvid) {
+    const bilibiliMetadata =
+      await fetchBilibiliMetadata(bilibiliBvid);
+
+    if (bilibiliMetadata) {
+      return {
+        finalUrl: initialUrl.toString(),
+        title: bilibiliMetadata.title.slice(0, 300),
+        thumbnailUrl: bilibiliMetadata.thumbnailUrl,
+        imageCandidates: [
+          bilibiliMetadata.thumbnailUrl,
+        ],
+      };
+    }
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

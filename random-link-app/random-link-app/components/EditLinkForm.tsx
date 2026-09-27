@@ -8,6 +8,8 @@ import {
   updateClientLink,
 } from "@/lib/client-db";
 
+import { getDisplayImageUrl } from "@/lib/display-image-url";
+
 export default function EditLinkForm({
   item,
   genres,
@@ -298,7 +300,7 @@ async function save(e: FormEvent) {
       }}
     >
       <img
-        src={thumbnailUrl}
+        src={getDisplayImageUrl(thumbnailUrl)}
         alt=""
         referrerPolicy="no-referrer"
         style={{
@@ -376,7 +378,7 @@ async function save(e: FormEvent) {
           <div className="image-grid">
             {candidates.map((src) => (
              <button key={src} className={thumbnailUrl === src ? "image-choice selected" : "image-choice"} type="button" onClick={() => setThumbnailUrl(src)}>
-                <img src={src} alt="" referrerPolicy="no-referrer" />
+                <img src={getDisplayImageUrl(src)} alt="" referrerPolicy="no-referrer" />
               </button>
             ))}
           </div>

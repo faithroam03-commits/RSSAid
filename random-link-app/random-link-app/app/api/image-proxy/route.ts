@@ -5,6 +5,17 @@ const TIMEOUT_MS = 8_000;
 const MAX_IMAGE_BYTES = 8_000_000;
 const MAX_REDIRECTS = 5;
 
+function isBilibiliImageHost(hostname: string) {
+  const host = hostname.toLowerCase();
+
+  return (
+    host === "hdslb.com" ||
+    host.endsWith(".hdslb.com") ||
+    host === "biliimg.com" ||
+    host.endsWith(".biliimg.com")
+  );
+}
+
 async function fetchImage(
   rawUrl: string,
   redirectCount = 0,
@@ -21,13 +32,19 @@ async function fetchImage(
   );
 
   try {
+    const headers: Record<string, string> = {
+      "user-agent":
+        "RandomLinkApp/0.1 (+personal bookmark preview)",
+    };
+
+    if (isBilibiliImageHost(safeUrl.hostname)) {
+      headers.referer = "https://www.bilibili.com/";
+    }
+
     const res = await fetch(safeUrl, {
       redirect: "manual",
       signal: controller.signal,
-      headers: {
-        "user-agent":
-          "RandomLinkApp/0.1 (+personal bookmark preview)",
-      },
+      headers,
     });
 
     if (res.status >= 300 && res.status < 400) {

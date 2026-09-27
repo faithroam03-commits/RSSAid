@@ -8,6 +8,8 @@ import {
   insertClientLink,
 } from "@/lib/client-db";
 
+import { getDisplayImageUrl } from "@/lib/display-image-url";
+
 export default function RegisterForm({
   genres,
   initialUrl = "",
@@ -452,7 +454,7 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
       }}
     >
       <img
-        src={thumbnailUrl}
+        src={getDisplayImageUrl(thumbnailUrl)}
         alt=""
         style={{
           width: "100%",
@@ -517,7 +519,7 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
           onClick={() => setThumbnailUrl(src)}
         >
           <img
-            src={src}
+            src={getDisplayImageUrl(src)}
             alt=""
             referrerPolicy="no-referrer"
           />
