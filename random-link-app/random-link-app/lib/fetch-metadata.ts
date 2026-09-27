@@ -189,6 +189,151 @@ async function fetchBilibiliMetadata(
   }
 }
 
+type YouTubeMetadata = {
+  title: string;
+  thumbnailUrl: string;
+  imageCandidates: string[];
+};
+
+function getYouTubeVideoId(url: URL): string | null {
+  const hostname = url.hostname.toLowerCase();
+  let videoId: string | null = null;
+
+  if (
+    hostname === "youtube.com" ||
+    hostname === "www.youtube.com" ||
+    hostname === "m.youtube.com"
+  ) {
+    if (url.pathname === "/watch") {
+      videoId = url.searchParams.get("v");
+    } else {
+      const match = url.pathname.match(
+        /^\/(?:shorts|live)\/([0-9A-Za-z_-]{11})(?:\/|$)/,
+      );
+      videoId = match?.[1] ?? null;
+    }
+  } else if (
+    hostname === "youtu.be" ||
+    hostname === "www.youtu.be"
+  ) {
+    const match = url.pathname.match(
+      /^\/([0-9A-Za-z_-]{11})(?:\/|$)/,
+    );
+    videoId = match?.[1] ?? null;
+  }
+
+  if (!videoId || !/^[0-9A-Za-z_-]{11}$/.test(videoId)) {
+    return null;
+  }
+
+  return videoId;
+}
+
+async function fetchYouTubeMetadata(
+  videoId: string,
+): Promise<YouTubeMetadata | null> {
+  const apiKey = process.env.RL_YOUTUBE_API;
+
+  if (!apiKey) {
+    return null;
+  }
+
+  const apiUrl = new URL(
+    "https://www.googleapis.com/youtube/v3/videos",
+  );
+
+  apiUrl.searchParams.set("part", "snippet");
+  apiUrl.searchParams.set("id", videoId);
+  apiUrl.searchParams.set("key", apiKey);
+
+  await assertSafeUrl(apiUrl.toString());
+
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(),
+    TIMEOUT_MS,
+  );
+
+  try {
+    const res = await fetch(apiUrl, {
+      signal: controller.signal,
+      headers: {
+        accept: "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const json = (await res.json()) as {
+      items?: Array<{
+        snippet?: {
+          title?: string;
+          thumbnails?: Record<
+            string,
+            {
+              url?: string;
+              width?: number;
+              height?: number;
+            }
+          >;
+        };
+      }>;
+    };
+
+    const snippet = json.items?.[0]?.snippet;
+
+    if (!snippet || typeof snippet.title !== "string") {
+      return null;
+    }
+
+    const title = snippet.title.trim();
+
+    if (!title) {
+      return null;
+    }
+
+    const thumbnails = Object.values(
+      snippet.thumbnails ?? {},
+    )
+      .filter(
+        (
+          item,
+        ): item is {
+          url: string;
+          width?: number;
+          height?: number;
+        } =>
+          typeof item.url === "string" &&
+          item.url.trim().length > 0,
+      )
+      .sort(
+        (a, b) =>
+          (b.width ?? 0) * (b.height ?? 0) -
+          (a.width ?? 0) * (a.height ?? 0),
+      );
+
+    const imageCandidates = [
+      ...new Set(
+        thumbnails.map((item) => item.url.trim()),
+      ),
+    ];
+
+    const thumbnailUrl = imageCandidates[0] ?? "";
+
+    return {
+      title,
+      thumbnailUrl,
+      imageCandidates,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchFrameImageCandidates(
   frameUrl: string,
   redirectCount = 0,
@@ -318,6 +463,21 @@ async function fetchFrameImageCandidates(
 export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
   const initialUrl = await assertSafeUrl(rawUrl);
 
+    const youtubeVideoId = getYouTubeVideoId(initialUrl);
+
+  if (youtubeVideoId) {
+    const youtubeMetadata =
+      await fetchYouTubeMetadata(youtubeVideoId);
+
+    if (youtubeMetadata) {
+      return {
+        finalUrl: initialUrl.toString(),
+        title: youtubeMetadata.title.slice(0, 300),
+        thumbnailUrl: youtubeMetadata.thumbnailUrl,
+        imageCandidates: youtubeMetadata.imageCandidates,
+      };
+    }
+  }
   const bilibiliBvid = getBilibiliBvid(initialUrl);
 
   if (bilibiliBvid) {
