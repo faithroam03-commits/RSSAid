@@ -494,6 +494,12 @@ export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
   }
   const bilibiliBvid = getBilibiliBvid(initialUrl);
 
+  console.log(
+  "Bilibili detected:",
+  initialUrl.hostname,
+  bilibiliBvid ?? "none",
+);
+
   if (bilibiliBvid) {
     const bilibiliMetadata =
       await fetchBilibiliMetadata(bilibiliBvid);
