@@ -460,6 +460,15 @@ async function fetchFrameImageCandidates(
   }
 }
 
+function isDmmUrl(url: URL): boolean {
+  const hostname = url.hostname.toLowerCase();
+
+  return (
+    hostname === "dmm.co.jp" ||
+    hostname.endsWith(".dmm.co.jp")
+  );
+}
+
 export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
   const initialUrl = await assertSafeUrl(rawUrl);
 
@@ -500,13 +509,22 @@ export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
+    const headers: Record<string, string> = {
+      "user-agent":
+        "RandomLinkApp/0.1 (+personal bookmark preview)",
+    };
+
+    if (isDmmUrl(initialUrl)) {
+      headers.cookie = "age_check_done=1";
+    }
+
     const res = await fetch(initialUrl, {
       redirect: "manual",
       signal: controller.signal,
-      headers: {
-        "user-agent": "RandomLinkApp/0.1 (+personal bookmark preview)"
-      }
+      headers,
     });
+
+    // Redirect先も再検証してSSRFを防ぐ
 
     // Redirect先も再検証してSSRFを防ぐ
 if (res.status >= 300 && res.status < 400) {
