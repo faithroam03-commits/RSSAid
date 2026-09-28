@@ -155,9 +155,15 @@ console.log(
   res.status,
 );
 
-    if (!res.ok) {
-      return null;
-    }
+if (!res.ok) {
+  console.log(
+    "Bilibili API rejected:",
+    res.status,
+    res.headers.get("content-type"),
+    res.headers.get("server"),
+  );
+  return null;
+}
 
     const json = (await res.json()) as {
       code?: number;
