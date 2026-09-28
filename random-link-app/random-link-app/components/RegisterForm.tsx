@@ -23,6 +23,8 @@ export default function RegisterForm({
   const [message, setMessage] = useState<string | null>(null);
   const [duplicateNotice, setDuplicateNotice] =
   useState<string | null>(null);
+  const [metadataNotice, setMetadataNotice] =
+  useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
@@ -145,9 +147,10 @@ setDuplicateNotice(
     : null
 );
   
-  setBusy(true);
-  setError(null);
-  setMessage(null);
+setBusy(true);
+setError(null);
+setMessage(null);
+setMetadataNotice([]);
 
   try {
     const res = await fetch("/api/scan-images", {
@@ -166,10 +169,29 @@ setDuplicateNotice(
       );
     }
 
+const nextTitle = data.title || "";
+const nextThumbnailUrl = data.thumbnailUrl || "";
+const nextCandidates = data.images || [];
+
 setUrl(data.url || url);
-setTitle(data.title || "");
-setThumbnailUrl(data.thumbnailUrl || "");
-setCandidates(data.images || []);
+setTitle(nextTitle);
+setThumbnailUrl(nextThumbnailUrl);
+setCandidates(nextCandidates);
+
+const notices: string[] = [];
+
+if (!nextTitle.trim()) {
+  notices.push("タイトルを取得できませんでした");
+}
+
+if (
+  !nextThumbnailUrl &&
+  nextCandidates.length === 0
+) {
+  notices.push("サムネイルを取得できませんでした");
+}
+
+setMetadataNotice(notices);
 setPreviewReady(true);
 } catch (e) {
   const message =
@@ -214,9 +236,10 @@ setManualMode(true);
   
 async function submit(e: FormEvent) {
   e.preventDefault();
-  setBusy(true);
-  setError(null);
-  setMessage(null);
+setBusy(true);
+setError(null);
+setMessage(null);
+setMetadataNotice([]);
 
 try {
 // 登録直前はページ取得を行わず、Web Riskだけを確認する。
@@ -392,7 +415,13 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
   {busy ? "情報を取得中..." : "情報を取得"}
 </button>
 
-      {duplicateNotice && (
+{metadataNotice.map((notice) => (
+  <div className="notice" key={notice}>
+    {notice}
+  </div>
+))}
+
+{duplicateNotice && (
   <div className="small" style={{ marginTop: 8 }}>
     {duplicateNotice}
   </div>
@@ -531,7 +560,7 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
     
   </div>
 )}
-      
+
  {message && <div className="notice">{message}</div>}
 
     </form>

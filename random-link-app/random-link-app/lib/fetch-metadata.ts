@@ -469,6 +469,29 @@ function isDmmUrl(url: URL): boolean {
   );
 }
 
+function getEbookJapanMetadataUrl(
+  url: URL,
+): URL | null {
+  const hostname = url.hostname.toLowerCase();
+
+  if (hostname !== "ebookjapan.yahoo.co.jp") {
+    return null;
+  }
+
+  const match = url.pathname.match(
+    /^\/books\/all\/(\d+)\/?$/,
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const metadataUrl = new URL(url.toString());
+  metadataUrl.pathname = `/books/${match[1]}/`;
+
+  return metadataUrl;
+}
+
 export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
   const initialUrl = await assertSafeUrl(rawUrl);
 
@@ -525,11 +548,21 @@ if (bilibiliBvid) {
       headers.cookie = "age_check_done=1";
     }
 
-    const res = await fetch(initialUrl, {
-      redirect: "manual",
-      signal: controller.signal,
-      headers,
-    });
+const ebookJapanMetadataUrl =
+  getEbookJapanMetadataUrl(initialUrl);
+
+const fetchUrl =
+  ebookJapanMetadataUrl ?? initialUrl;
+
+if (ebookJapanMetadataUrl) {
+  await assertSafeUrl(fetchUrl.toString());
+}
+
+const res = await fetch(fetchUrl, {
+  redirect: "manual",
+  signal: controller.signal,
+  headers,
+});
 
     // Redirect先も再検証してSSRFを防ぐ
 if (res.status >= 300 && res.status < 400) {
@@ -540,7 +573,7 @@ if (res.status >= 300 && res.status < 400) {
   const location = res.headers.get("location");
   if (!location) throw new Error("リダイレクト先を取得できません。");
 
-  const next = new URL(location, initialUrl).toString();
+  const next = new URL(location, fetchUrl).toString();
   await assertSafeUrl(next);
 
   return fetchPageMetadata(next, redirectCount + 1);
