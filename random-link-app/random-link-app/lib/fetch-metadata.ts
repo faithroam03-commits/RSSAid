@@ -150,18 +150,7 @@ async function fetchBilibiliMetadata(
       },
     });
 
-console.log(
-  "Bilibili API response:",
-  res.status,
-);
-
 if (!res.ok) {
-  console.log(
-    "Bilibili API rejected:",
-    res.status,
-    res.headers.get("content-type"),
-    res.headers.get("server"),
-  );
   return null;
 }
 
@@ -500,27 +489,28 @@ export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
   }
   const bilibiliBvid = getBilibiliBvid(initialUrl);
 
-  console.log(
-  "Bilibili detected:",
-  initialUrl.hostname,
-  bilibiliBvid ?? "none",
-);
+if (bilibiliBvid) {
+  const bilibiliMetadata =
+    await fetchBilibiliMetadata(bilibiliBvid);
 
-  if (bilibiliBvid) {
-    const bilibiliMetadata =
-      await fetchBilibiliMetadata(bilibiliBvid);
-
-    if (bilibiliMetadata) {
-      return {
-        finalUrl: initialUrl.toString(),
-        title: bilibiliMetadata.title.slice(0, 300),
-        thumbnailUrl: bilibiliMetadata.thumbnailUrl,
-        imageCandidates: [
-          bilibiliMetadata.thumbnailUrl,
-        ],
-      };
-    }
+  if (bilibiliMetadata) {
+    return {
+      finalUrl: initialUrl.toString(),
+      title: bilibiliMetadata.title.slice(0, 300),
+      thumbnailUrl: bilibiliMetadata.thumbnailUrl,
+      imageCandidates: [
+        bilibiliMetadata.thumbnailUrl,
+      ],
+    };
   }
+
+  return {
+    finalUrl: initialUrl.toString(),
+    title: "",
+    thumbnailUrl: "",
+    imageCandidates: [],
+  };
+}
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -540,12 +530,6 @@ export async function fetchPageMetadata(rawUrl: string, redirectCount = 0) {
       signal: controller.signal,
       headers,
     });
-
-console.log(
-  "Page metadata response:",
-  initialUrl.hostname,
-  res.status,
-);
 
     // Redirect先も再検証してSSRFを防ぐ
 if (res.status >= 300 && res.status < 400) {
