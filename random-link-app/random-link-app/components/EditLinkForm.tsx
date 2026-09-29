@@ -185,9 +185,32 @@ async function save(e: FormEvent) {
   return (
     <>
       <form className="panel form" onSubmit={save}>
-        <label>URL
-          <input type="url" required value={url} onChange={(e) => setUrl(e.target.value)} />
-        </label>
+
+<label>
+  URL
+
+  <div style={{ display: "flex", gap: 8 }}>
+    <input
+      type="url"
+      required
+      value={url}
+      onChange={(e) => setUrl(e.target.value)}
+      style={{ flex: 1 }}
+    />
+
+    {url && (
+      <button
+        type="button"
+        className="btn"
+        onClick={() => setUrl("")}
+        aria-label="URLを削除"
+      >
+        ×
+      </button>
+    )}
+  </div>
+</label>
+
 <label>
   タイトル
 
