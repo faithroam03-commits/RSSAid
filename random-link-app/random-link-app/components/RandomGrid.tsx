@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import RandomCard from "@/components/RandomCard";
 import type { LinkRecord } from "@/lib/types";
-
+import { openInBrowser } from "@/lib/open-browser";
 type GridSize = 1 | 4 | 9;
 
 export default function RandomGrid({
@@ -70,13 +69,15 @@ const visibleItems = items.slice(0, visibleCount);
 ) : (
 <section className={`randomGrid grid${gridSize}`}>
     {visibleItems.map((item) => (
-      <a
-        key={item.id}
-        href={item.url}
-        className="gridCard"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
+<a
+  key={item.id}
+  href={item.url}
+  className="gridCard"
+  onClick={(e) => {
+    e.preventDefault();
+    openInBrowser(item.url);
+  }}
+>
 
 <div className="gridThumbFrame">
   {item.thumbnail_url ? (

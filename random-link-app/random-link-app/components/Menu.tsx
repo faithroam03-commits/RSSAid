@@ -62,7 +62,11 @@ export default function Menu() {
        <Link href="/backup" onClick={closeMenu}>
   バックアップ
 </Link>
-       
+
+<Link href="/settings" onClick={closeMenu}>
+  設定
+</Link>
+
       </nav>
     </details>
   );
