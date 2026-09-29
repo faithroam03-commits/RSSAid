@@ -11,9 +11,10 @@ export const BROWSER_STORAGE_KEY =
   "randomLinkOpenBrowser";
 
 const browserPackages: Record<
-  Exclude<BrowserChoice, "default" | "chrome">,
+  Exclude<BrowserChoice, "default">,
   string
 > = {
+  chrome: "com.android.chrome",
   firefox: "org.mozilla.firefox",
   edge: "com.microsoft.emmx",
   brave: "com.brave.browser",
@@ -45,10 +46,10 @@ export function openInBrowser(
   url: string,
   choice = getBrowserChoice(),
 ) {
-  if (choice === "default" || choice === "chrome") {
-    window.open(url, "_blank", "noopener,noreferrer");
-    return;
-  }
+if (choice === "default") {
+  window.open(url, "_blank", "noopener,noreferrer");
+  return;
+}
 
   const packageName = browserPackages[choice];
 
