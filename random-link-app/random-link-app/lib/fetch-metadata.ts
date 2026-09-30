@@ -724,6 +724,17 @@ const res = await fetch(fetchUrl, {
   headers,
 });
 
+if (
+  initialUrl.hostname === "pixiv.net" ||
+  initialUrl.hostname.endsWith(".pixiv.net")
+) {
+  console.log("Pixiv fetch:", {
+    url: fetchUrl.toString(),
+    status: res.status,
+    location: res.headers.get("location"),
+  });
+}
+
     // Redirect先も再検証してSSRFを防ぐ
 if (res.status >= 300 && res.status < 400) {
   if (redirectCount >= MAX_REDIRECTS) {
