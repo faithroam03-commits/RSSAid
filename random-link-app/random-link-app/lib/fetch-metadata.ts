@@ -728,11 +728,9 @@ if (
   initialUrl.hostname === "pixiv.net" ||
   initialUrl.hostname.endsWith(".pixiv.net")
 ) {
-  console.log("Pixiv fetch:", {
-    url: fetchUrl.toString(),
-    status: res.status,
-    location: res.headers.get("location"),
-  });
+  console.log(
+    `Pixiv fetch: url=${fetchUrl.toString()} status=${res.status} location=${res.headers.get("location") ?? "null"}`,
+  );
 }
 
     // Redirect先も再検証してSSRFを防ぐ
