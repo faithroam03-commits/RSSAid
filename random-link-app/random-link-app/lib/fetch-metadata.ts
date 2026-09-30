@@ -698,6 +698,15 @@ if (bilibiliBvid) {
     if (isDmmUrl(initialUrl)) {
       headers.cookie = "age_check_done=1";
     }
+    if (
+      initialUrl.hostname === "pixiv.net" ||
+      initialUrl.hostname.endsWith(".pixiv.net")
+    ) {
+      headers["user-agent"] =
+        "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 " +
+        "Chrome/140.0.0.0 Mobile Safari/537.36";
+      headers.referer = "https://www.pixiv.net/";
+    }
 
 const ebookJapanMetadataUrl =
   getEbookJapanMetadataUrl(initialUrl);
