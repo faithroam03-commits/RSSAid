@@ -686,6 +686,35 @@ if (bilibiliBvid) {
   };
 }
 
+  const pixivMatch = initialUrl.pathname.match(
+    /^\/(?:[a-z]{2}\/)?artworks\/(\d+)/,
+  );
+
+  if (
+    (initialUrl.hostname === "pixiv.net" ||
+      initialUrl.hostname.endsWith(".pixiv.net")) &&
+    pixivMatch
+  ) {
+    const pixivIllustId = pixivMatch[1];
+    const pixivAjaxUrl =
+      `https://www.pixiv.net/ajax/illust/${pixivIllustId}`;
+
+    await assertSafeUrl(pixivAjaxUrl);
+
+    const pixivTestRes = await fetch(pixivAjaxUrl, {
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 " +
+          "Chrome/140.0.0.0 Mobile Safari/537.36",
+        referer: initialUrl.toString(),
+      },
+    });
+
+    console.log(
+      `Pixiv AJAX test: url=${pixivAjaxUrl} status=${pixivTestRes.status}`,
+    );
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
