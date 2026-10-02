@@ -34,7 +34,7 @@ export default function EditLinkForm({
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function uploadThumbnail(
+async function uploadThumbnail(
   e: React.ChangeEvent<HTMLInputElement>
 ) {
   const file = e.target.files?.[0];
@@ -46,6 +46,34 @@ export default function EditLinkForm({
   }
 
   setError(null);
+
+  // GIFはアニメーションを維持するため変換せず保存する
+  if (file.type === "image/gif") {
+    const maxGifSize = 5 * 1024 * 1024;
+
+    if (file.size > maxGifSize) {
+      setError("GIF画像は5MB以下のファイルを選択してください。");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        setError("GIF画像の読み込みに失敗しました。");
+        return;
+      }
+
+      setThumbnailUrl(reader.result);
+    };
+
+    reader.onerror = () => {
+      setError("GIF画像の読み込みに失敗しました。");
+    };
+
+    reader.readAsDataURL(file);
+    return;
+  }
 
   try {
     const imageUrl = URL.createObjectURL(file);
@@ -99,7 +127,7 @@ export default function EditLinkForm({
   } catch {
     setError("画像の読み込みに失敗しました。");
   }
-  }
+}
   
 async function save(e: FormEvent) {
   e.preventDefault();
