@@ -13,9 +13,11 @@ import { getDisplayImageUrl } from "@/lib/display-image-url";
 export default function RegisterForm({
   genres,
   initialUrl = "",
+  initialTitle = "",
 }: {
   genres: string[];
   initialUrl?: string;
+  initialTitle?: string;
 }) {
   const [url, setUrl] = useState(initialUrl);
   const [busy, setBusy] = useState(false);
@@ -26,7 +28,7 @@ export default function RegisterForm({
   const [metadataNotice, setMetadataNotice] =
   useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle);
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [previewReady, setPreviewReady] = useState(false);
   const [manualMode, setManualMode] = useState(false);
@@ -203,14 +205,20 @@ const nextThumbnailUrl = data.thumbnailUrl || "";
 const nextCandidates = data.images || [];
 
 setUrl(data.url || url);
-setTitle(nextTitle);
+if (nextTitle.trim()) {
+  setTitle(nextTitle);
+}
 setThumbnailUrl(nextThumbnailUrl);
 setCandidates(nextCandidates);
 
 const notices: string[] = [];
 
 if (!nextTitle.trim()) {
-  notices.push("タイトルを取得できませんでした");
+  notices.push(
+    initialTitle.trim()
+      ? "ページからタイトルを取得できなかったため、共有機能で取得したタイトルを入力しました"
+      : "タイトルを取得できませんでした"
+  );
 }
 
 if (

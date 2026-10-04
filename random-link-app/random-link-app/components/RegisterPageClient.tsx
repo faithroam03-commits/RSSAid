@@ -7,10 +7,12 @@ import { getClientGenres } from "@/lib/client-db";
 
 type Props = {
   initialUrl: string;
+  initialTitle?: string;
 };
 
 export default function RegisterPageClient({
   initialUrl,
+  initialTitle = "",
 }: Props) {
   const [genres, setGenres] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,7 @@ export default function RegisterPageClient({
     <RegisterForm
       genres={genres}
       initialUrl={initialUrl}
+      initialTitle={initialTitle}
     />
   );
 }

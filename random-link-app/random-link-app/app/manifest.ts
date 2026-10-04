@@ -30,14 +30,14 @@ icons: [
     purpose: "maskable",
   },
 ],
-    share_target: {
-      action: "/register",
-      method: "GET",
-      params: {
-        title: "title",
-        text: "text",
-        url: "url",
-      },
-    },
+share_target: {
+  action: "/register",
+  method: "GET",
+  params: {
+    title: "title",
+    text: "text",
+    url: "url",
+  },
+},
   };
 }
