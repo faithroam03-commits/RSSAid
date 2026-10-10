@@ -551,8 +551,8 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
       setImageFit(e.target.value as "cover" | "contain")
     }
   >
-    <option value="cover">中心を優先</option>
     <option value="contain">全体を表示</option>
+    <option value="cover">中心を優先</option>
   </select>
 </label>
         

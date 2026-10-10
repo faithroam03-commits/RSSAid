@@ -48,11 +48,11 @@ export default function Menu() {
 </Link>
 
         <Link href="/register" onClick={closeMenu}>
-          新規URL登録
+          新規登録
         </Link>
 
         <Link href="/admin" onClick={closeMenu}>
-          URLメンテナンス
+          カードメンテナンス
         </Link>
 
         <Link href="/genres" onClick={closeMenu}>

@@ -31,12 +31,19 @@ icons: [
   },
 ],
 share_target: {
-  action: "/register",
-  method: "GET",
+  action: "/share",
+  method: "POST",
+  enctype: "multipart/form-data",
   params: {
     title: "title",
     text: "text",
     url: "url",
+    files: [
+      {
+        name: "files",
+        accept: ["image/*"],
+      },
+    ],
   },
 },
   };

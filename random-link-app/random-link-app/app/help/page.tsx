@@ -15,12 +15,12 @@ export default function HelpPage() {
       <section className="helpSection">
         <h2>URLを登録する</h2>
         <p>
-          メニューの「新規URL登録」からURLを登録できます。
+          メニューの「新規登録」からURLを登録できます。
           タイトルやサムネイル画像、ジャンルを設定して保存します。
         </p>
 
         <Link className="helpLink" href="/register">
-          新規URL登録を開く
+          新規登録を開く
         </Link>
       </section>
 
@@ -63,7 +63,7 @@ export default function HelpPage() {
       <section className="helpSection">
         <h2>URLを整理・編集する</h2>
         <p>
-          「URLメンテナンス」では、タイトル・サムネイル・
+          「カードメンテナンス」では、タイトル・サムネイル・
           ジャンルなどを編集できます。
         </p>
         <p>
@@ -73,7 +73,7 @@ export default function HelpPage() {
         </p>
 
         <Link className="helpLink" href="/admin">
-          URLメンテナンスを開く
+          カードメンテナンスを開く
         </Link>
       </section>
 

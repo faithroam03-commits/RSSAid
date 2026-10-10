@@ -6,6 +6,7 @@ import {
   getClientLinks,
   importClientBackup,
   importClientSharedGenre,
+  exportClientMediaBackup,
   type ClientBackupData,
   type ClientSharedGenreData,
 } from "@/lib/client-db";
@@ -105,9 +106,13 @@ async function runImport() {
     return;
   }
 
-  const ok = window.confirm(
-    `リンク ${importData.links.length}件、ジャンル ${importData.genres.length}件を追加インポートします。\n\n既存データは削除されません。`
-  );
+const ok = window.confirm(
+  `リンク ${importData.links.length}件、` +
+  `ジャンル ${importData.genres.length}件、` +
+  `端末画像 ${importData.media?.length ?? 0}件を` +
+  `追加インポートします。\n\n` +
+  `既存データは削除されません。`
+);
 
   if (!ok) {
     return;
@@ -120,8 +125,11 @@ async function runImport() {
   try {
     const result = await importClientBackup(importData);
 
-    setImportResult(
-  `インポート完了：リンク ${result.addedLinks}件、ジャンル ${result.addedGenres}件を追加しました。トップページやジャンル管理で内容を確認してください。`
+setImportResult(
+  `インポート完了：リンク ${result.addedLinks}件、` +
+  `ジャンル ${result.addedGenres}件、` +
+  `端末画像 ${result.addedMedia}件を追加しました。` +
+  `トップページやジャンル管理で内容を確認してください。`
 );
   } catch (error) {
     console.error(error);
@@ -164,13 +172,15 @@ async function runImport() {
   async function exportBackup() {
     const links = await getClientLinks();
     const genres = await getClientGenreRecords();
+    const media = await exportClientMediaBackup();
 
-    const backup = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      links,
-      genres,
-    };
+const backup: ClientBackupData = {
+  version: 2,
+  exportedAt: new Date().toISOString(),
+  links,
+  genres,
+  media,
+};
 
     const json = JSON.stringify(backup, null, 2);
     const blob = new Blob([json], {
@@ -657,9 +667,10 @@ if (
 }
 
 if (
-  data.version !== 1 ||
+  (data.version !== 1 && data.version !== 2) ||
   !Array.isArray(data.links) ||
-  !Array.isArray(data.genres)
+  !Array.isArray(data.genres) ||
+  (data.version === 2 && !Array.isArray(data.media))
 ) {
   throw new Error();
 }
@@ -742,6 +753,11 @@ if (
     <div>
       ジャンル：{importData.genres.length}件
     </div>
+    {importData.version === 2 && (
+  <div>
+    端末画像：{importData.media?.length ?? 0}件
+  </div>
+)}
 
     <button
       type="button"

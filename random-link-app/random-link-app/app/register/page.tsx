@@ -28,7 +28,7 @@ export default async function RegisterPage({
 
   return (
     <>
-      <h1>新規URL登録</h1>
+      <h1>新規登録</h1>
     <RegisterPageClient
       initialUrl={initialUrl}
       initialTitle={params.title ?? ""}

@@ -32,6 +32,7 @@ export default function AdminClient({
 const [bulkMode, setBulkMode] = useState(false);
 const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 const [bulkGenre, setBulkGenre] = useState("");
+const [bulkMessage, setBulkMessage] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -189,6 +190,9 @@ async function moveSelectedLinks() {
     return;
   }
 
+  const movedCount = selectedIds.size;
+  setBulkMessage("");
+
   try {
     await Promise.all(
       [...selectedIds].map((id) =>
@@ -206,7 +210,9 @@ async function moveSelectedLinks() {
 
     setSelectedIds(new Set());
     setBulkGenre("");
+    setBulkMessage(`${movedCount}件のジャンルを変更しました。`);
   } catch {
+    setBulkMessage("");
     alert("ジャンル移動に失敗しました。");
   }
 }
@@ -245,7 +251,7 @@ async function deleteSelectedLinks() {
   
   return (
     <>
-      <h1>URLメンテナンス</h1>
+      <h1>カードメンテナンス</h1>
 
       <nav className="genreTabs">
 <Link
@@ -387,6 +393,7 @@ async function deleteSelectedLinks() {
       </form>
 
 <div className="adminBulkHeader">
+
   <p className="small">
     現在 {links.length} 件登録されています。
   </p>
@@ -453,6 +460,20 @@ async function deleteSelectedLinks() {
         削除
       </button>
     </div>
+
+    {bulkMessage && (
+      <p
+        role="status"
+        style={{
+          marginTop: 16,
+          marginBottom: 0,
+          color: "#16803c",
+          fontWeight: 600,
+        }}
+      >
+        ✓ {bulkMessage}
+      </p>
+    )}
   </div>
 )}
 

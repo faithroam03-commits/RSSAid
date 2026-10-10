@@ -53,7 +53,7 @@ export default function EditPageClient({
           href="/admin"
           className="btn"
         >
-          URLメンテナンスへ戻る
+          カードメンテナンスへ戻る
         </Link>
       </>
     );

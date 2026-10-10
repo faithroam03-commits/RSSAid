@@ -624,7 +624,7 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   }
 }
 
-/* URLメンテナンス 一括操作 */
+/* カードメンテナンス 一括操作 */
 
 .adminBulkHeader {
   display: flex;

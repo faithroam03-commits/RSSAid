@@ -73,10 +73,18 @@ const visibleItems = items.slice(0, visibleCount);
   key={item.id}
   href={item.url}
   className="gridCard"
-  onClick={(e) => {
-    e.preventDefault();
+onClick={(e) => {
+  e.preventDefault();
+
+  if (item.url) {
     openInBrowser(item.url);
-  }}
+    return;
+  }
+
+  if (item.media_id != null) {
+    router.push(`/media/${item.media_id}`);
+  }
+}}
 >
 
 <div className="gridThumbFrame">

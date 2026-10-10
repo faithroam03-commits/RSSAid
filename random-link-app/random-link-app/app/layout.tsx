@@ -1,6 +1,7 @@
 import "./globals.css";
 import Menu from "@/components/Menu";
 import type { ReactNode } from "react";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 export const metadata = {
   title: "Random Link",
@@ -14,8 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <body>
-        <header className="header">
+<body>
+  <ServiceWorkerRegister />
+  <header className="header">
           <Menu />
 
           <div className="brand" aria-label="Random Link">
