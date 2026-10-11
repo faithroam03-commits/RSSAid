@@ -741,10 +741,49 @@ if (res.status >= 300 && res.status < 400) {
     
     if (!res.ok) throw new Error(`ページ取得に失敗しました (${res.status})`);
 
-    const contentType = res.headers.get("content-type") || "";
-    if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) {
-      throw new Error("HTMLページではありません。");
-    }
+const contentType = (
+  res.headers.get("content-type") || ""
+).toLowerCase();
+
+const supportedImageTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+];
+
+const mimeType = contentType.split(";")[0].trim();
+
+if (supportedImageTypes.includes(mimeType)) {
+  await res.body?.cancel();
+
+  const imageUrl = initialUrl.toString();
+
+  let filename = imageUrl.split("/").pop() || "画像";
+
+  try {
+    filename = decodeURIComponent(
+      new URL(imageUrl).pathname.split("/").pop() || "画像"
+    );
+  } catch {
+    filename = "画像";
+  }
+
+  return {
+    finalUrl: imageUrl,
+    title: filename.slice(0, 300),
+    thumbnailUrl: imageUrl,
+    imageCandidates: [imageUrl],
+  };
+}
+
+if (
+  !contentType.includes("text/html") &&
+  !contentType.includes("application/xhtml+xml")
+) {
+  throw new Error("HTMLページではありません。");
+}
 
     const reader = res.body?.getReader();
     if (!reader) throw new Error("ページ本文を取得できません。");
