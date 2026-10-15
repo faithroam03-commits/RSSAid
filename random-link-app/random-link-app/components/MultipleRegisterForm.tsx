@@ -129,6 +129,40 @@ function getExcludedNumbers(items: UrlItem[]): number[] {
     .map((item) => item.number);
 }
 
+function getExcludeReason(item: UrlItem): string {
+  if (!item.valid) {
+    return "URL形式が不正";
+  }
+
+  if (
+    item.status === "unsafe" ||
+    item.safetyStatus === "unsafe"
+  ) {
+    return "危険なURL";
+  }
+
+  if (!item.title.trim()) {
+    return "タイトル未入力";
+  }
+
+  if (!item.genre.trim()) {
+    return "ジャンル未指定";
+  }
+
+  if (item.safetyStatus !== "safe") {
+    return "安全性を確認できません";
+  }
+
+  if (
+    item.status !== "ready" &&
+    item.status !== "metadata_error"
+  ) {
+    return "URLの読み込みが未完了";
+  }
+
+  return "登録できない状態";
+}
+
 async function checkSafetyForSave(
   currentItems: UrlItem[]
 ): Promise<UrlItem[]> {
@@ -655,17 +689,7 @@ await insertClientLink({
       );
     } else {
       setError("");
-
-      const excludedNumbers = getExcludedNumbers(checkedItems);
-
-      if (excludedNumbers.length === 0) {
-        window.location.assign("/");
-      } else {
-        setSaveNotice(
-          "登録可能なURLを保存しました。" +
-          `No.${excludedNumbers.join("、No.")}は除外されています。`
-        );
-      }
+      window.location.assign("/");
     }
   } finally {
     setIsSaving(false);
@@ -1219,12 +1243,24 @@ style={{
       marginBottom: 16,
     }}
   >
+    <p>登録できないURLがあります。</p>
+
+    <ul>
+      {items
+        .filter(
+          (item) =>
+            item.saveStatus !== "saved" &&
+            !isSaveCandidate(item)
+        )
+        .map((item) => (
+          <li key={item.number}>
+            No.{item.number}：{getExcludeReason(item)}
+          </li>
+        ))}
+    </ul>
+
     <p>
-      No.{getExcludedNumbers(items).join("、No.")}
-      が登録できません。
-    </p>
-    <p>
-      これらを除外して登録しますか？
+      内容を修正するか、これらを除外して登録しますか？
     </p>
 
     <button
