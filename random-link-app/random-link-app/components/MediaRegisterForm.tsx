@@ -401,7 +401,9 @@ router.push(
     setShowGenreAdd(!showGenreAdd);
   }}
 >
-  ＋ 新規ジャンル
+  {showGenreAdd
+    ? "← 既存ジャンルに戻る"
+    : "＋ 新規ジャンル"}
 </button>
 
 {showGenreAdd && (

@@ -191,14 +191,19 @@ export async function insertClientLink(input: ClientLinkInput) {
   const db = await getClientDb();
   const now = new Date().toISOString();
 
-  const id = Date.now();
+  const tx = db.transaction("links", "readwrite");
+const latest = await tx.store.openCursor(null, "prev");
+const id = Math.max(
+  Date.now(),
+  (latest?.primaryKey ?? 0) + 1
+);
 
-  await db.add("links", {
+  await tx.store.add({
     id,
     url: input.url,
     title: input.title,
 thumbnail_url: input.thumbnailUrl ?? null,
-image_fit: input.imageFit ?? "cover",
+image_fit: input.imageFit ?? "contain",
 media_id: input.mediaId ?? null,
 genre: finalGenre,
     enabled: 1,
@@ -206,6 +211,7 @@ genre: finalGenre,
     updated_at: now,
   });
 
+  await tx.done;
   return id;
 }
 

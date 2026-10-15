@@ -46,19 +46,50 @@ if (process.env.NODE_ENV === "production") {
       );
     }
 
-    const risk = await checkWebRisk(url);
+let risk;
 
-    if (!risk.safe) {
-      return NextResponse.json(
-        {
-          error: "安全でない可能性があるURLのため登録できません。",
-          threatTypes: risk.threatTypes,
-        },
-        { status: 400 }
-      );
-    }
+try {
+  risk = await checkWebRisk(url);
+} catch (e) {
+  return NextResponse.json(
+    {
+      error:
+        e instanceof Error
+          ? e.message
+          : "URLの安全性を確認できません。",
+      errorCode: "SAFETY_CHECK_FAILED",
+    },
+    { status: 503 }
+  );
+}
 
-    const meta = await fetchPageMetadata(url);
+if (!risk.safe) {
+  return NextResponse.json(
+    {
+      error: "安全でない可能性があるURLのため登録できません。",
+      errorCode: "UNSAFE_URL",
+      threatTypes: risk.threatTypes,
+    },
+    { status: 400 }
+  );
+}
+
+    let meta;
+
+try {
+  meta = await fetchPageMetadata(url);
+} catch (e) {
+  return NextResponse.json(
+    {
+      error:
+        e instanceof Error
+          ? e.message
+          : "ページ情報の取得に失敗しました。",
+      errorCode: "METADATA_FETCH_FAILED",
+    },
+    { status: 400 }
+  );
+}
 
 return NextResponse.json({
   url: meta.finalUrl,

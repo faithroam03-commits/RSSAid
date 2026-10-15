@@ -372,14 +372,14 @@ async function save(e: FormEvent) {
     保存
   </button>
 
-  <a
-    className="btn"
-    href={url}
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    元URLを開く
-  </a>
+<a
+  className="btn"
+  href={item.url}
+  target="_blank"
+  rel="noopener noreferrer"
+>
+  元URLを開く
+</a>
   
   <button
     type="button"

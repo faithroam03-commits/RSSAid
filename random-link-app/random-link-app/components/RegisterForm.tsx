@@ -35,7 +35,7 @@ export default function RegisterForm({
   const [candidates, setCandidates] = useState<string[]>([]);
  const router = useRouter();
  const autoFetchStarted = useRef(false);
- const [imageFit, setImageFit] = useState<"cover" | "contain">("cover");
+const [imageFit, setImageFit] = useState<"cover" | "contain">("contain");
   const [showGenreAdd, setShowGenreAdd] = useState(false);
   const [newGenre, setNewGenre] = useState("");
 
@@ -423,7 +423,9 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
   setShowGenreAdd(!showGenreAdd);
 }}
 >
-  ＋ 新規ジャンル
+  {showGenreAdd
+    ? "← 既存ジャンルに戻る"
+    : "＋ 新規ジャンル"}
 </button>
 
 {showGenreAdd && (
