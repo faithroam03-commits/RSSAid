@@ -43,13 +43,9 @@ export default function Menu() {
        トップ
       </Link>
 
-<Link href="/help" onClick={closeMenu}>
-  使い方
+<Link href="/register" onClick={closeMenu}>
+  ＋ 新規登録
 </Link>
-
-        <Link href="/register" onClick={closeMenu}>
-          新規登録
-        </Link>
 
         <Link href="/admin" onClick={closeMenu}>
           カードメンテナンス

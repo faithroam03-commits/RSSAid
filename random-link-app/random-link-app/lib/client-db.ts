@@ -417,6 +417,52 @@ export async function moveClientGenre(
   await tx.done;
 }
 
+export async function reorderClientGenres(
+  names: string[]
+) {
+  const db = await getClientDb();
+  const genres = await db.getAll("genres");
+
+  const sorted = [...genres].sort(
+    (a, b) =>
+      a.sort_order - b.sort_order ||
+      a.id - b.id
+  );
+
+  const currentNames = sorted.map(
+    (item) => item.name
+  );
+
+  if (
+    names.length !== currentNames.length ||
+    names[0] !== "New" ||
+    new Set(names).size !== names.length ||
+    names.some((name) => !currentNames.includes(name))
+  ) {
+    throw new Error("ジャンルの並び順が不正です。");
+  }
+
+  const tx = db.transaction("genres", "readwrite");
+
+  for (const [index, name] of names.entries()) {
+    const genre = genres.find(
+      (item) => item.name === name
+    );
+
+    if (!genre) {
+      tx.abort();
+      throw new Error("ジャンルが見つかりません。");
+    }
+
+    await tx.store.put({
+      ...genre,
+      sort_order: index,
+    });
+  }
+
+  await tx.done;
+}
+
 export async function getClientLink(id: number) {
   const db = await getClientDb();
   return db.get("links", id);

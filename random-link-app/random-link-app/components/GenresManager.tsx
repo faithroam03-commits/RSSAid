@@ -1,12 +1,84 @@
 "use client";
 
 import { useState } from "react";
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import {
   deleteClientGenre,
   insertClientGenre,
-  moveClientGenre,
+  reorderClientGenres,
 } from "@/lib/client-db";
+
+function SortableGenreRow({
+  genre,
+  children,
+}: {
+  genre: string;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: genre,
+    disabled: genre === "New",
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        marginBottom: "10px",
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        position: "relative",
+        zIndex: isDragging ? 1 : undefined,
+      }}
+    >
+    {children}
+      {genre !== "New" && (
+        <button
+          ref={setActivatorNodeRef}
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`${genre}を並べ替え`}
+          style={{
+            cursor: "grab",
+            touchAction: "none",
+            userSelect: "none",
+          }}
+        >
+          ⠿
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function GenresManager({
   genres,
@@ -14,34 +86,53 @@ export default function GenresManager({
   genres: string[];
 }) {
   const [items, setItems] = useState(genres);
+    const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 8,
+      },
+    })
+  );
+
+  async function handleDragEnd(
+    event: DragEndEvent
+  ) {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = items.indexOf(String(active.id));
+    const newIndex = items.indexOf(String(over.id));
+
+    if (oldIndex <= 0 || newIndex <= 0) {
+      return;
+    }
+
+    const next = arrayMove(
+      items,
+      oldIndex,
+      newIndex
+    );
+
+    try {
+      await reorderClientGenres(next);
+      setItems(next);
+      setGenreMessage("");
+    } catch {
+      setGenreMessage("並び順の保存に失敗しました。");
+      setGenreMessageType("error");
+    }
+  }
   const [newGenre, setNewGenre] = useState("");
   const [genreMessage, setGenreMessage] = useState("");
   const [genreMessageType, setGenreMessageType] =
   useState<"success" | "error" | null>(null);
-  
-async function move(index: number, direction: -1 | 1) {
-  const target = index + direction;
-
-  if (target < 1 || target >= items.length) {
-    return;
-  }
-
-  const name = items[index];
-
-  await moveClientGenre(
-    name,
-    direction === -1 ? "up" : "down"
-  );
-
-  const next = [...items];
-
-  [next[index], next[target]] = [
-    next[target],
-    next[index],
-  ];
-
-  setItems(next);
-}
   
 async function add() {
   const name = newGenre.trim();
@@ -100,24 +191,23 @@ async function remove(name: string) {
     {genreMessage}
   </div>
 )}
-      <div>
-        {items.map((genre, index) => (
-          <div
-            key={genre}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              marginBottom: "10px",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              {genre}
-            </div>
-
+     <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={items}
+          strategy={verticalListSortingStrategy}
+        >
+          <div>
+            {items.map((genre, index) => (
+            <SortableGenreRow key={genre} genre={genre}>
             {genre === "New" ? (
-              <span>固定</span>
-            ) : (
+  <button type="button" disabled>
+    固定
+  </button>
+) : (
               <>
 <button
   type="button"
@@ -133,27 +223,17 @@ const ok = window.confirm(
 >
   削除
 </button>
-
-                <button
-                  type="button"
-                  onClick={() => move(index, -1)}
-                  disabled={index <= 1}
-                >
-                  ↑
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => move(index, 1)}
-                  disabled={index >= items.length - 1}
-                >
-                  ↓
-                </button>
               </>
             )}
+
+            <div style={{ flex: 1 }}>
+              {genre}
+            </div>
+          </SortableGenreRow>
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "randomLinkOpenBrowser";
@@ -71,6 +72,12 @@ export default function SettingsPage() {
           登録したカードを開くときに使用します。
         </div>
       </section>
+
+      <section className="panel">
+        <Link href="/help">
+          使い方
+        </Link>
+      </section>
     </main>
-  );
+);
 }
