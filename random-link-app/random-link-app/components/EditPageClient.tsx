@@ -61,12 +61,8 @@ export default function EditPageClient({
 
   return (
     <>
-      <h1>URL編集</h1>
-
-      <EditLinkForm
-        item={item}
-        genres={genres}
-      />
+      <h1>{item.media_id != null ? "メディア編集" : "URL編集"}</h1>
+      <EditLinkForm item={item} genres={genres} />
     </>
   );
 }

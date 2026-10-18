@@ -136,21 +136,23 @@ async function save(e: FormEvent) {
   setError(null);
 
   try {
-    // 保存直前にWeb Riskチェック
-    const safetyRes = await fetch("/api/scan-images", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ url }),
-    });
+    // URLがある場合は保存直前にWeb Riskチェック
+    if (url.trim()) {
+      const safetyRes = await fetch("/api/check-url", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ url }),
+      });
 
-    const safetyData = await safetyRes.json();
+      const safetyData = await safetyRes.json();
 
-    if (!safetyRes.ok) {
-      throw new Error(
-        safetyData.error || "URLの安全性を確認できませんでした。"
-      );
+      if (!safetyRes.ok) {
+        throw new Error(
+          safetyData.error || "URLの安全性を確認できませんでした。"
+        );
+      }
     }
 
     let finalGenre = genre;
@@ -220,7 +222,7 @@ async function save(e: FormEvent) {
   <div style={{ display: "flex", gap: 8 }}>
     <input
       type="url"
-      required
+      required={item.media_id == null}
       value={url}
       onChange={(e) => setUrl(e.target.value)}
       style={{ flex: 1 }}
