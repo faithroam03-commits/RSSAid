@@ -15,6 +15,7 @@ export default function RandomGrid({
 }) {
   const router = useRouter();
   const [gridSize, setGridSize] = useState<GridSize>(1);
+  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("randomLinkGridSize");
@@ -75,7 +76,10 @@ const visibleItems = items.slice(0, visibleCount);
   className="gridCard"
 onClick={(e) => {
   e.preventDefault();
-
+  if (editMode) {
+    router.push(`/admin/${item.id}?from=home`);
+    return;
+  }
   if (item.url) {
     openInBrowser(item.url);
     return;
@@ -110,6 +114,30 @@ onClick={(e) => {
          </section>
       )}
         </div>
+<button
+  type="button"
+  className={`gridEditButton ${editMode ? "active" : ""}`}
+  onClick={() => setEditMode(!editMode)}
+  aria-label={editMode ? "編集モードを終了" : "編集モードを開始"}
+  title={editMode ? "編集モード終了" : "編集モード"}
+>
+  <svg
+    width="25"
+    height="25"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M16 5l3 3" />
+    <path d="M9 15l-1 4 4-1L21 9a2.12 2.12 0 0 0-3-3z" />
+  </svg>
+</button>
+
 <button
   className="gridRefreshButton"
   onClick={refresh}

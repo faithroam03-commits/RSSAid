@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LinkRecord } from "@/lib/types";
 import {
+  deleteClientLink,
   insertClientGenre,
   updateClientLink,
 } from "@/lib/client-db";
@@ -13,11 +14,13 @@ import { getDisplayImageUrl } from "@/lib/display-image-url";
 export default function EditLinkForm({
   item,
   genres,
+  fromHome = false,
 }: {
   item: LinkRecord;
   genres: string[];
+  fromHome?: boolean;
 }) {
-   
+
   const router = useRouter();
   const [url, setUrl] = useState(item.url);
   const [title, setTitle] = useState(item.title);
@@ -128,7 +131,31 @@ async function uploadThumbnail(
     setError("画像の読み込みに失敗しました。");
   }
 }
-  
+
+async function removeLink() {
+  if (busy) return;
+
+  if (!window.confirm("このカードを削除しますか？")) {
+    return;
+  }
+
+  setBusy(true);
+  setError(null);
+
+  try {
+    await deleteClientLink(item.id);
+    router.push(fromHome ? "/" : "/admin");
+  } catch (e) {
+    setError(
+      e instanceof Error
+        ? e.message
+        : "カードの削除に失敗しました。"
+    );
+  } finally {
+    setBusy(false);
+  }
+}
+
 async function save(e: FormEvent) {
   e.preventDefault();
   setBusy(true);
@@ -176,8 +203,8 @@ async function save(e: FormEvent) {
       enabled: enabled ? 1 : 0,
     });
 
-    setMsg("保存しました。");
-    router.push("/admin");
+setMsg("保存しました。");
+router.push(fromHome ? "/" : "/admin");
   } catch (e) {
     setError(
       e instanceof Error ? e.message : "保存に失敗しました。"
@@ -423,6 +450,17 @@ async function save(e: FormEvent) {
         
         {msg && <div className="notice">{msg}</div>}
       </form>
+
+<div style={{ marginTop: 24, textAlign: "center" }}>
+  <button
+    type="button"
+    className="btn danger"
+    onClick={removeLink}
+    disabled={busy}
+  >
+    このカードを削除
+  </button>
+</div>
 
       {candidates.length > 0 && (
         <section style={{marginTop:20}}>

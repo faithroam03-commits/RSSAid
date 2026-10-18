@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-
+import { useSearchParams } from "next/navigation";
 import EditLinkForm from "@/components/EditLinkForm";
 import {
   getClientGenres,
@@ -16,6 +16,8 @@ type Props = {
 export default function EditPageClient({
   id,
 }: Props) {
+  const searchParams = useSearchParams();
+  const fromHome = searchParams.get("from") === "home";
   const [item, setItem] = useState<
     Awaited<ReturnType<typeof getClientLink>>
   >(undefined);
@@ -62,7 +64,11 @@ export default function EditPageClient({
   return (
     <>
       <h1>{item.media_id != null ? "メディア編集" : "URL編集"}</h1>
-      <EditLinkForm item={item} genres={genres} />
+ <EditLinkForm
+  item={item}
+  genres={genres}
+  fromHome={fromHome}
+/>
     </>
   );
 }

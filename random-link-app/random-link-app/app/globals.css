@@ -386,6 +386,39 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   cursor: pointer;
 }
 
+/* ===== 編集モード切り替えボタン ===== */
+
+.gridEditButton {
+  position: fixed;
+  left: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 54px;
+  height: 54px;
+  padding: 0;
+
+  border: none;
+  border-radius: 50%;
+  background: #222;
+  color: #fff;
+
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+}
+
+.gridEditButton.active {
+  background: #2563eb;
+}
+
+.gridEditButton:active {
+  transform: scale(0.94);
+}
+
 /* ===== ランダム更新ボタン ===== */
 
 .gridRefreshButton {
