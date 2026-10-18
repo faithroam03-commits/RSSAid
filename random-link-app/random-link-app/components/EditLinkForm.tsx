@@ -132,6 +132,27 @@ async function uploadThumbnail(
   }
 }
 
+function getReturnPath() {
+  if (!fromHome) return "/admin";
+
+  const savedOrder = sessionStorage.getItem(
+    "randomLinkHomeCardOrder"
+  );
+
+  if (savedOrder) {
+    try {
+      const saved = JSON.parse(savedOrder);
+      if (typeof saved.genre === "string" && saved.genre) {
+        return `/?genre=${encodeURIComponent(saved.genre)}`;
+      }
+    } catch {
+      // 保存情報が不正な場合はALLへ戻る
+    }
+  }
+
+  return "/";
+}
+
 async function removeLink() {
   if (busy) return;
 
@@ -144,7 +165,7 @@ async function removeLink() {
 
   try {
     await deleteClientLink(item.id);
-    router.push(fromHome ? "/" : "/admin");
+    router.push(getReturnPath());
   } catch (e) {
     setError(
       e instanceof Error
@@ -204,7 +225,7 @@ async function save(e: FormEvent) {
     });
 
 setMsg("保存しました。");
-router.push(fromHome ? "/" : "/admin");
+router.push(getReturnPath());
   } catch (e) {
     setError(
       e instanceof Error ? e.message : "保存に失敗しました。"

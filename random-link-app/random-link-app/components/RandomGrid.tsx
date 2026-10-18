@@ -16,6 +16,14 @@ export default function RandomGrid({
   const router = useRouter();
   const [gridSize, setGridSize] = useState<GridSize>(1);
   const [editMode, setEditMode] = useState(false);
+  useEffect(() => {
+  const saved = sessionStorage.getItem("randomLinkHomeEditMode");
+
+  if (saved === "true") {
+    setEditMode(true);
+    sessionStorage.removeItem("randomLinkHomeEditMode");
+  }
+}, []);
 
   useEffect(() => {
     const saved = localStorage.getItem("randomLinkGridSize");
@@ -77,8 +85,18 @@ const visibleItems = items.slice(0, visibleCount);
 onClick={(e) => {
   e.preventDefault();
   if (editMode) {
-    router.push(`/admin/${item.id}?from=home`);
-    return;
+  sessionStorage.setItem("randomLinkHomeEditMode", "true");
+
+  sessionStorage.setItem(
+    "randomLinkHomeCardOrder",
+    JSON.stringify({
+      genre: genre ?? null,
+      ids: items.map((link) => link.id),
+    })
+  );
+
+  router.push(`/admin/${item.id}?from=home`);
+  return;
   }
   if (item.url) {
     openInBrowser(item.url);
