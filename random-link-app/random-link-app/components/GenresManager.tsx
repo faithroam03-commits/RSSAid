@@ -21,6 +21,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   deleteClientGenre,
   insertClientGenre,
+  renameClientGenre,
   reorderClientGenres,
 } from "@/lib/client-db";
 
@@ -47,11 +48,13 @@ function SortableGenreRow({
   return (
     <div
       ref={setNodeRef}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        marginBottom: "10px",
+style={{
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  marginBottom: "8px",
+  paddingBottom: "8px",
+  borderBottom: "1px solid #ddd",
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
@@ -67,11 +70,15 @@ function SortableGenreRow({
           {...attributes}
           {...listeners}
           aria-label={`${genre}を並べ替え`}
-          style={{
-            cursor: "grab",
-            touchAction: "none",
-            userSelect: "none",
-          }}
+style={{
+  cursor: "grab",
+  touchAction: "none",
+  userSelect: "none",
+  width: "48px",
+  height: "72px",
+  fontSize: "24px",
+  flexShrink: 0,
+}}
         >
           ⠿
         </button>
@@ -86,7 +93,9 @@ export default function GenresManager({
   genres: string[];
 }) {
   const [items, setItems] = useState(genres);
-    const sensors = useSensors(
+  const [editingGenre, setEditingGenre] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
     }),
@@ -153,6 +162,50 @@ return;
   setGenreMessageType("success");
 }
 
+function startEdit(name: string) {
+  setEditingGenre(name);
+  setEditingName(name);
+  setGenreMessage("");
+}
+
+function cancelEdit() {
+  setEditingGenre(null);
+  setEditingName("");
+  setGenreMessage("");
+  setGenreMessageType(null);
+}
+
+async function saveEdit() {
+  if (editingGenre === null) return;
+
+  try {
+    const updatedName = await renameClientGenre(
+      editingGenre,
+      editingName
+    );
+
+    setItems((current) =>
+      current.map((name) =>
+        name === editingGenre ? updatedName : name
+      )
+    );
+
+    setEditingGenre(null);
+    setEditingName("");
+    setGenreMessage(
+      `「${editingGenre}」を「${updatedName}」に変更しました。`
+    );
+    setGenreMessageType("success");
+  } catch (error) {
+    setGenreMessage(
+      error instanceof Error
+        ? error.message
+        : "ジャンル名の変更に失敗しました。"
+    );
+    setGenreMessageType("error");
+  }
+}
+
 async function remove(name: string) {
   if (name === "New") return;
 
@@ -183,7 +236,7 @@ async function remove(name: string) {
       </button>
         
       </div>
-{genreMessage && (
+{genreMessage && editingGenre === null && (
   <div
     className={genreMessageType === "error" ? "error" : "notice"}
     style={{ marginBottom: "16px" }}
@@ -209,6 +262,20 @@ async function remove(name: string) {
   </button>
 ) : (
               <>
+<div
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  }}
+>
+  <button
+    type="button"
+    onClick={() => startEdit(genre)}
+  >
+    編集
+  </button>
+
 <button
   type="button"
   onClick={() => {
@@ -223,12 +290,47 @@ const ok = window.confirm(
 >
   削除
 </button>
+</div>
               </>
             )}
 
-            <div style={{ flex: 1 }}>
-              {genre}
-            </div>
+<div style={{ flex: 1, minWidth: 0 }}>
+  {editingGenre === genre ? (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "6px",
+      }}
+    >
+      <input
+        value={editingName}
+        onChange={(e) => setEditingName(e.target.value)}
+        aria-label={`${genre}の新しいジャンル名`}
+      />
+      <div
+        style={{
+          display: "flex",
+          gap: "6px",
+        }}
+      >
+        <button type="button" onClick={saveEdit}>
+          保存
+        </button>
+<button type="button" onClick={cancelEdit}>
+  キャンセル
+</button>
+      </div>
+      {genreMessage && genreMessageType === "error" && (
+        <div className="error">
+          {genreMessage}
+        </div>
+      )}
+    </div>
+  ) : (
+    genre
+  )}
+</div>
           </SortableGenreRow>
             ))}
           </div>

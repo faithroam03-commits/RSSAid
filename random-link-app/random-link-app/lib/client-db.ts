@@ -247,6 +247,73 @@ export async function insertClientGenre(name: string) {
   return trimmedName;
 }
 
+export async function renameClientGenre(
+  oldName: string,
+  newName: string
+) {
+  const trimmedName = newName.trim();
+
+  if (!trimmedName) {
+    throw new Error("ジャンル名を入力してください。");
+  }
+
+  if (oldName === "New") {
+    throw new Error("New は名前変更できません。");
+  }
+
+  const db = await getClientDb();
+  const genres = await db.getAll("genres");
+
+  const target = genres.find(
+    (item) => item.name === oldName
+  );
+
+  if (!target) {
+    throw new Error("変更対象のジャンルが見つかりません。");
+  }
+
+  if (genres.some(
+    (item) => item.name === trimmedName &&
+      item.id !== target.id
+  )) {
+    throw new Error("同じ名前のジャンルが既に存在します。");
+  }
+
+  if (oldName === trimmedName) {
+    return trimmedName;
+  }
+
+  const links = await db.getAll("links");
+
+  const tx = db.transaction(
+    ["genres", "links"],
+    "readwrite"
+  );
+
+  const genreStore = tx.objectStore("genres");
+  const linkStore = tx.objectStore("links");
+  const updatedAt = new Date().toISOString();
+
+  await genreStore.put({
+    ...target,
+    name: trimmedName,
+  });
+
+  for (const link of links) {
+    if (link.genre === oldName) {
+      await linkStore.put({
+        ...link,
+        genre: trimmedName,
+        updated_at: updatedAt,
+      });
+    }
+  }
+
+  await tx.done;
+
+  return trimmedName;
+}
+
 export type ClientLinkUpdate = {
   url?: string;
   title?: string;
