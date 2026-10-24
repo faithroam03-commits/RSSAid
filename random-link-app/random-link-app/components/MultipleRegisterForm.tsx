@@ -725,6 +725,59 @@ await insertClientLink({
         />
       </label>
 
+<button
+  type="button"
+  className="btn primary"
+  onClick={handleLoad}
+disabled={isFetching || isSaving || isCheckingSafety}
+>
+  {isFetching ? "ページ情報を取得中..." : "URLを読み込む"}
+</button>
+
+{isFetching && (
+  <p role="status">
+    ページ情報を取得中：{fetchProgress} / {fetchTotal}件
+  </p>
+)}
+
+{hasLoaded &&
+  !isFetching &&
+  items.some(
+    (item) =>
+      item.valid &&
+      (item.status === "pending" ||
+        item.status === "retry" ||
+        item.status === "safety_error")
+  ) && (
+    <button
+      type="button"
+      className="btn"
+      onClick={() => void fetchAllMetadata(items)}
+    >
+      未取得・失敗したURLを再試行
+    </button>
+  )}
+
+{error && !hasLoaded && (
+  <p role="alert" style={{ color: "crimson" }}>
+    {error}
+  </p>
+)}
+
+      {hasLoaded && (
+        <div style={{ marginTop: 20 }}>
+          <h3>読み込み結果</h3>
+
+<p>
+  読み込み対象：{items.length}件
+  <br />
+  URL形式が正常：{validCount}件
+  <br />
+  URL形式エラー：{errorCount}件
+  <br />
+  危険URL：{unsafeCount}件
+</p>
+
 {!showGenreAdd && (
 <div>
   <label htmlFor="bulk-genre">
@@ -784,6 +837,7 @@ setItems((prev) =>
 
 <button
   type="button"
+  style={{ width: "100%", marginTop: 12, marginBottom: 16 }}
   disabled={isFetching}
   onClick={() => {
     if (showGenreAdd) {
@@ -800,7 +854,7 @@ setItems((prev) =>
 {showGenreAdd && (
   <div>
     <label htmlFor="bulk-new-genre">
-      新しいジャンル名
+     ジャンル名
     </label>
 
     <div
@@ -824,7 +878,6 @@ setItems((prev) =>
 
       <button
         type="button"
-        className="btn"
 disabled={
   !hasLoaded ||
   isFetching ||
@@ -859,59 +912,6 @@ setItems((prev) =>
     </div>
   </div>
 )}
-
-<button
-  type="button"
-  className="btn primary"
-  onClick={handleLoad}
-disabled={isFetching || isSaving || isCheckingSafety}
->
-  {isFetching ? "ページ情報を取得中..." : "URLを読み込む"}
-</button> 
-
-{isFetching && (
-  <p role="status">
-    ページ情報を取得中：{fetchProgress} / {fetchTotal}件
-  </p>
-)}
-
-{hasLoaded &&
-  !isFetching &&
-  items.some(
-    (item) =>
-      item.valid &&
-      (item.status === "pending" ||
-        item.status === "retry" ||
-        item.status === "safety_error")
-  ) && (
-    <button
-      type="button"
-      className="btn"
-      onClick={() => void fetchAllMetadata(items)}
-    >
-      未取得・失敗したURLを再試行
-    </button>
-  )}
-  
-{error && !hasLoaded && (
-  <p role="alert" style={{ color: "crimson" }}>
-    {error}
-  </p>
-)}
-
-      {hasLoaded && (
-        <div style={{ marginTop: 20 }}>
-          <h3>読み込み結果</h3>
-
-<p>
-  読み込み対象：{items.length}件
-  <br />
-  URL形式が正常：{validCount}件
-  <br />
-  URL形式エラー：{errorCount}件
-  <br />
-  危険URL：{unsafeCount}件
-</p>
 
           {items.map((item) => (
             <div

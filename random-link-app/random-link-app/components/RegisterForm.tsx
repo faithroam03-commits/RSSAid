@@ -377,74 +377,6 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
         
       </label>
 
-{!showGenreAdd && (
-  <label>
-    ジャンル
-
-    <details className="genreSelect">
-      <summary>{genre || "選択してください"}</summary>
-
-      <div className="genreSelectList">
-        <button
-          type="button"
-          onClick={(e) => {
-            setGenre("New");
-            e.currentTarget.closest("details")?.removeAttribute("open");
-          }}
-        >
-          New
-        </button>
-
-        {genres
-          .filter((g) => g !== "New")
-          .map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={(e) => {
-                setGenre(g);
-                e.currentTarget.closest("details")?.removeAttribute("open");
-              }}
-            >
-              {g}
-            </button>
-          ))}
-      </div>
-    </details>
-  </label>
-)}
-
-<button
-  type="button"
-  onClick={() => {
-  if (showGenreAdd) {
-    setNewGenre("");
-  }
-  setShowGenreAdd(!showGenreAdd);
-}}
->
-  {showGenreAdd
-    ? "← 既存ジャンルに戻る"
-    : "＋ 新規ジャンル"}
-</button>
-
-{showGenreAdd && (
-  <div>
-    <input
-      type="text"
-      value={newGenre}
-      onChange={(e) => setNewGenre(e.target.value)}
-      placeholder="ジャンル名"
-    />
-
-<div className="small">
-  {newGenre.trim()
-    ? `ジャンル「${newGenre.trim()}」を新規作成して登録`
-    : "ジャンル名を入力してください"}
-</div>
-  </div>
-)}
-      
 <button
   type="button"
   className={`btn ${previewReady ? "" : "primary"}`}
@@ -544,7 +476,79 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
     </button>
 
     {error && <div className="error">{error}</div>}
-    
+
+<div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", marginTop: 16 }}>
+
+{!showGenreAdd && (
+  <label>
+    ジャンル
+
+    <details className="genreSelect">
+      <summary>{genre || "選択してください"}</summary>
+
+      <div className="genreSelectList">
+        <button
+          type="button"
+          onClick={(e) => {
+            setGenre("New");
+            e.currentTarget.closest("details")?.removeAttribute("open");
+          }}
+        >
+          New
+        </button>
+
+        {genres
+          .filter((g) => g !== "New")
+          .map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={(e) => {
+                setGenre(g);
+                e.currentTarget.closest("details")?.removeAttribute("open");
+              }}
+            >
+              {g}
+            </button>
+          ))}
+      </div>
+    </details>
+  </label>
+)}
+
+<button
+  type="button"
+  onClick={() => {
+  if (showGenreAdd) {
+    setNewGenre("");
+  }
+  setShowGenreAdd(!showGenreAdd);
+}}
+>
+  {showGenreAdd
+    ? "← 既存ジャンルに戻る"
+    : "＋ 新規ジャンル"}
+</button>
+
+{showGenreAdd && (
+  <div>
+    <input
+      type="text"
+      value={newGenre}
+      onChange={(e) => setNewGenre(e.target.value)}
+      placeholder="ジャンル名"
+    />
+
+<div className="small">
+  {newGenre.trim()
+    ? `ジャンル「${newGenre.trim()}」を新規作成して登録`
+    : "ジャンル名を入力してください"}
+</div>
+  </div>
+)}
+
+</div>
+
 <label style={{ marginTop: 16 }}>
   サムネイルの大きさ:
   <select
