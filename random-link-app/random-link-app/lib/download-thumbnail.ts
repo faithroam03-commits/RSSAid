@@ -58,7 +58,24 @@ export async function downloadThumbnail(
   let objectUrl: string | null = null;
 
   try {
-    const response = await fetch(imageUrl);
+    let fetchUrl = imageUrl;
+
+    try {
+      const parsed = new URL(imageUrl);
+
+      if (
+        parsed.protocol === "https:" &&
+        parsed.hostname.toLowerCase() === "i.pinimg.com"
+      ) {
+        fetchUrl =
+          "/api/image-proxy?url=" +
+          encodeURIComponent(imageUrl);
+      }
+    } catch {
+      // Data URLや相対URLはそのまま扱う。
+    }
+
+    const response = await fetch(fetchUrl);
 
     if (!response.ok) {
       throw new Error(`画像取得に失敗しました（${response.status}）。`);
@@ -73,7 +90,8 @@ export async function downloadThumbnail(
     objectUrl = URL.createObjectURL(blob);
 
     const extension = extensionFromType(blob.type);
-    const fileName = `${safeFileName(title)}_${timestamp()}.${extension}`;
+    const uniqueId = crypto.randomUUID().slice(0, 8);
+    const fileName = `${safeFileName(title)}_${timestamp()}_${uniqueId}.${extension}`;
 
     const anchor = document.createElement("a");
     anchor.href = objectUrl;
