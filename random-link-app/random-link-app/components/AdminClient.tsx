@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import AdminTable from "@/components/AdminTable";
 import {
@@ -10,6 +10,9 @@ import {
   getClientLinks,
   updateClientLink,
 } from "@/lib/client-db";
+
+import { downloadThumbnail } from "@/lib/download-thumbnail";
+import { getDisplayImageUrl } from "@/lib/display-image-url";
 
 type Props = {
   selectedGenre?: string;
@@ -33,6 +36,13 @@ const [bulkMode, setBulkMode] = useState(false);
 const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 const [bulkGenre, setBulkGenre] = useState("");
 const [bulkMessage, setBulkMessage] = useState("");
+const [bulkDownloading, setBulkDownloading] = useState(false);
+const [bulkDownloadProgress, setBulkDownloadProgress] = useState({
+  completed: 0,
+  total: 0,
+});
+const [bulkDownloadSummary, setBulkDownloadSummary] = useState("");
+const bulkDownloadRunning = useRef(false);
 
   useEffect(() => {
     async function load() {
@@ -183,6 +193,81 @@ function toggleAllVisible() {
 
     return next;
   });
+}
+
+async function downloadSelectedImages() {
+  if (bulkDownloadRunning.current) {
+    return;
+  }
+
+  const count = selectedIds.size;
+
+  if (count === 0) {
+    return;
+  }
+
+  if (count > 20) {
+    alert("画像保存は一度に20件までです。\n選択件数を減らしてください。");
+    return;
+  }
+
+  const targets = allLinks.filter((link) =>
+    selectedIds.has(link.id)
+  );
+
+  if (targets.length === 0) {
+    return;
+  }
+
+  const confirmed = confirm(
+    `選択した${targets.length}件の画像を保存しますか？\n\n` +
+    "複数の画像を保存すると、端末のストレージ容量を消費します。\n" +
+    "Chromeから複数ダウンロードの許可を求められる場合があります。"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  bulkDownloadRunning.current = true;
+  setBulkDownloading(true);
+  setBulkDownloadSummary("");
+  setBulkDownloadProgress({
+    completed: 0,
+    total: targets.length,
+  });
+
+  let requested = 0;
+  let failed = 0;
+
+  try {
+    for (let i = 0; i < targets.length; i++) {
+      const link = targets[i];
+
+      const result = await downloadThumbnail(
+        getDisplayImageUrl(link.thumbnail_url),
+        link.title
+      );
+
+      if (result.ok) {
+        requested++;
+      } else {
+        failed++;
+      }
+
+      setBulkDownloadProgress({
+        completed: i + 1,
+        total: targets.length,
+      });
+    }
+
+    setBulkDownloadSummary(
+      `ダウンロード要求：${requested}件 / 取得失敗：${failed}件`
+    );
+  } finally {
+    bulkDownloadRunning.current = false;
+    setBulkDownloading(false);
+  }
 }
 
 async function moveSelectedLinks() {
@@ -459,7 +544,29 @@ async function deleteSelectedLinks() {
       >
         削除
       </button>
+            <button
+        type="button"
+        className="btn"
+        onClick={downloadSelectedImages}
+        disabled={selectedIds.size === 0 || bulkDownloading}
+      >
+        {bulkDownloading ? "画像保存中..." : "画像保存"}
+      </button>
     </div>
+
+    {bulkDownloading && (
+      <p role="status" className="small">
+        画像保存中：
+        {bulkDownloadProgress.completed} /
+        {bulkDownloadProgress.total} 件
+      </p>
+    )}
+
+    {bulkDownloadSummary && (
+      <p role="status" className="small">
+        {bulkDownloadSummary}
+      </p>
+    )}
 
     {bulkMessage && (
       <p

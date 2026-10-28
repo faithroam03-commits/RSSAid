@@ -3,6 +3,8 @@
 
 import { useState } from "react";
 import { insertClientLink } from "@/lib/client-db";
+import { downloadThumbnail } from "@/lib/download-thumbnail";
+import { getDisplayImageUrl } from "@/lib/display-image-url";
 
 type Props = {
   genres: string[];
@@ -1065,15 +1067,73 @@ setItems((prev) =>
     {item.thumbnailUrl && (
       <div style={{ marginTop: 12 }}>
         <p>選択中のサムネイル</p>
-        <img
-          src={item.thumbnailUrl}
-          alt="選択中のサムネイル"
-style={{
-  width: "100%",
-  height: 180,
-  objectFit: item.imageFit,
-}}
-        />
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            height: 180,
+          }}
+        >
+          <img
+            src={item.thumbnailUrl}
+            alt="選択中のサムネイル"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: item.imageFit,
+              display: "block",
+            }}
+          />
+
+          <button
+            type="button"
+            aria-label={`No.${item.number}のサムネイルをダウンロード`}
+            title="画像を保存"
+            onClick={async () => {
+              const result = await downloadThumbnail(
+                getDisplayImageUrl(item.thumbnailUrl),
+                item.title || "thumbnail"
+              );
+
+              if (!result.ok) {
+                alert(result.error);
+              }
+            }}
+            style={{
+              position: "absolute",
+              right: 8,
+              bottom: 8,
+              width: 28,
+              height: 28,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(0, 0, 0, 0.65)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 5,
+              cursor: "pointer",
+              padding: 0,
+              zIndex: 1,
+            }}
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3v12" />
+              <path d="m7 10 5 5 5-5" />
+              <path d="M5 17v4h14v-4" />
+            </svg>
+          </button>
+        </div>
       </div>
     )}
 {(item.status === "ready" ||

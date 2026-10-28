@@ -9,6 +9,7 @@ import {
 } from "@/lib/client-db";
 
 import { getDisplayImageUrl } from "@/lib/display-image-url";
+import { downloadThumbnail } from "@/lib/download-thumbnail";
 
 export default function RegisterForm({
   genres,
@@ -446,6 +447,7 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
 
     <div
       style={{
+        position: "relative",
         width: "100%",
         height: 240,
         overflow: "hidden",
@@ -463,6 +465,55 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
           display: "block",
         }}
       />
+
+      <button
+        type="button"
+        aria-label="サムネイルをダウンロード"
+        title="画像を保存"
+        onClick={async () => {
+          const result = await downloadThumbnail(
+            getDisplayImageUrl(thumbnailUrl),
+            title || "thumbnail"
+          );
+
+          if (!result.ok) {
+            alert(result.error);
+          }
+        }}
+        style={{
+          position: "absolute",
+          right: 8,
+          bottom: 8,
+          width: 36,
+          height: 36,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(0, 0, 0, 0.65)",
+          color: "#fff",
+          border: "none",
+          borderRadius: 6,
+          cursor: "pointer",
+          fontSize: 22,
+          zIndex: 1,
+        }}
+      >
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 3v12" />
+          <path d="m7 10 5 5 5-5" />
+          <path d="M5 17v4h14v-4" />
+        </svg>
+      </button>
     </div>
 </div>
 )}
