@@ -46,7 +46,9 @@ export function openInBrowser(
   url: string,
   choice = getBrowserChoice(),
 ) {
-if (choice === "default") {
+const isAndroid = /Android/i.test(navigator.userAgent);
+
+if (choice === "default" || !isAndroid) {
   window.open(url, "_blank", "noopener,noreferrer");
   return;
 }

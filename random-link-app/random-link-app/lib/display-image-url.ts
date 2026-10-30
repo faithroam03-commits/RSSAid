@@ -17,7 +17,7 @@ export function getDisplayImageUrl(
       host === "biliimg.com" ||
       host.endsWith(".biliimg.com");
 
-    if (isBilibiliImage) {
+    if (isBilibiliImage || host === "pbs.twimg.com") {
       return (
         "/api/image-proxy?url=" +
         encodeURIComponent(rawUrl)
