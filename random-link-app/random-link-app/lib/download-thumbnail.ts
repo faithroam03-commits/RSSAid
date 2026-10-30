@@ -1,3 +1,5 @@
+import { getWritableDownloadFolder } from "@/lib/download-folder";
+
 export type ThumbnailDownloadResult =
   | { ok: true }
   | { ok: false; error: string };
@@ -58,7 +60,10 @@ export async function downloadThumbnail(
   let objectUrl: string | null = null;
 
   try {
-    let fetchUrl = imageUrl;
+  // 画像取得前に保存先フォルダの権限を確認する。
+  const targetFolder = await getWritableDownloadFolder();
+
+  let fetchUrl = imageUrl;
 
     try {
       const parsed = new URL(imageUrl);
@@ -87,13 +92,35 @@ export async function downloadThumbnail(
       throw new Error("取得したファイルが画像ではありません。");
     }
 
-    objectUrl = URL.createObjectURL(blob);
+const extension = extensionFromType(blob.type);
+const uniqueId = crypto.randomUUID().slice(0, 8);
+const fileName = `${safeFileName(title)}_${timestamp()}_${uniqueId}.${extension}`;
 
-    const extension = extensionFromType(blob.type);
-    const uniqueId = crypto.randomUUID().slice(0, 8);
-    const fileName = `${safeFileName(title)}_${timestamp()}_${uniqueId}.${extension}`;
+// 保存先が設定されている場合は直接書き込む。
+if (targetFolder) {
+  const fileHandle = await targetFolder.getFileHandle(
+    fileName,
+    { create: true }
+  );
 
-    const anchor = document.createElement("a");
+  const writable = await fileHandle.createWritable();
+
+  try {
+    await writable.write(blob);
+    await writable.close();
+  } catch (error) {
+    await writable.abort().catch(() => {});
+    throw error;
+  }
+
+  return { ok: true };
+}
+
+// 保存先未設定の場合は従来のダウンロード方式。
+objectUrl = URL.createObjectURL(blob);
+
+const anchor = document.createElement("a");
+
     anchor.href = objectUrl;
     anchor.download = fileName;
     anchor.style.display = "none";
