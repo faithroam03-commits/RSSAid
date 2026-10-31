@@ -134,9 +134,9 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
 }
 
 .menuPanel {
-  position: absolute;
-  top: 46px;
-  left: 0;
+  position: fixed;
+  top: 56px;
+  left: 14px;
   width: 220px;
   padding: 8px;
   background: #fff;
