@@ -31,6 +31,79 @@ export default function Menu() {
     document.removeEventListener("pointerdown", handlePointerDown);
   };
 }, []);
+
+useEffect(() => {
+  let startX = 0;
+  let startY = 0;
+  let tracking = false;
+  let startedInMenu = false;
+
+  const handleTouchStart = (event: TouchEvent) => {
+    if (event.touches.length !== 1) {
+      tracking = false;
+      return;
+    }
+
+    const touch = event.touches[0];
+    const details = detailsRef.current;
+
+    if (!details) return;
+
+    startX = touch.clientX;
+    startY = touch.clientY;
+
+    startedInMenu =
+      details.open &&
+      event.target instanceof Element &&
+      !!event.target.closest(".menuPanel");
+
+tracking = details.open
+  ? startedInMenu
+  : startX >= 24 && startX <= 120;
+  };
+
+  const handleTouchEnd = (event: TouchEvent) => {
+    if (!tracking) return;
+
+    tracking = false;
+
+    const touch = event.changedTouches[0];
+    const details = detailsRef.current;
+
+    if (!touch || !details) return;
+
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+
+    // 縦スクロールはスワイプ操作として扱わない。
+    if (Math.abs(dy) > 45) return;
+
+    if (!details.open && dx > 80) {
+      details.open = true;
+    } else if (details.open && startedInMenu && dx < -80) {
+      details.open = false;
+    }
+  };
+
+  const handleTouchCancel = () => {
+    tracking = false;
+  };
+
+  document.addEventListener("touchstart", handleTouchStart, {
+    passive: true,
+  });
+  document.addEventListener("touchend", handleTouchEnd, {
+    passive: true,
+  });
+  document.addEventListener("touchcancel", handleTouchCancel);
+
+  return () => {
+    document.removeEventListener("touchstart", handleTouchStart);
+    document.removeEventListener("touchend", handleTouchEnd);
+    document.removeEventListener("touchcancel", handleTouchCancel);
+  };
+}, []);
+
   return (
     <details ref={detailsRef} className="menu">
       <summary className="menuButton" aria-label="メニューを開く">
