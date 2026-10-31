@@ -63,13 +63,13 @@ setThumbnailUrl("");
 setError(null);
 
 if (nextFile.type === "image/gif") {
-  const maxGifSize = 5 * 1024 * 1024;
+  const maxGifSize = 20 * 1024 * 1024;
 
   if (nextFile.size > maxGifSize) {
     URL.revokeObjectURL(nextPreviewUrl);
     setFile(null);
     setPreviewUrl("");
-    setError("GIF画像は5MB以下のファイルを選択してください。");
+    setError("GIF画像は20MB以下のファイルを選択してください。");
     return;
   }
 

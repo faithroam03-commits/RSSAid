@@ -198,9 +198,9 @@ async function convertThumbnailFile(
   }
 
   if (file.type === "image/gif") {
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 20 * 1024 * 1024) {
       throw new Error(
-        "GIF画像は5MB以下のファイルを選択してください。"
+        "GIF画像は20MB以下のファイルを選択してください。"
       );
     }
 

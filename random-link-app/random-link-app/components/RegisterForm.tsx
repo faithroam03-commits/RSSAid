@@ -81,10 +81,10 @@ async function uploadThumbnail(
 
   // GIFはアニメーションを維持するため変換せず保存する
   if (file.type === "image/gif") {
-    const maxGifSize = 5 * 1024 * 1024;
+    const maxGifSize = 20 * 1024 * 1024;
 
     if (file.size > maxGifSize) {
-      setError("GIF画像は5MB以下のファイルを選択してください。");
+      setError("GIF画像は20MB以下のファイルを選択してください。");
       return;
     }
 
