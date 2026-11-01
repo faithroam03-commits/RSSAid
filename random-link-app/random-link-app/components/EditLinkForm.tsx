@@ -16,10 +16,12 @@ export default function EditLinkForm({
   item,
   genres,
   fromHome = false,
+  fromSlideshow = false,
 }: {
   item: LinkRecord;
   genres: string[];
   fromHome?: boolean;
+  fromSlideshow?: boolean;
 }) {
 
   const router = useRouter();
@@ -134,6 +136,7 @@ async function uploadThumbnail(
 }
 
 function getReturnPath() {
+  if (fromSlideshow) return "/slideshow";
   if (!fromHome) return "/admin";
 
   const savedOrder = sessionStorage.getItem(

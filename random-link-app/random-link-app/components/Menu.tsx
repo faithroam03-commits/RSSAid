@@ -120,6 +120,10 @@ tracking = details.open
   ＋ 新規登録
 </Link>
 
+<Link href="/slideshow" onClick={closeMenu}>
+  スライドショー
+</Link>
+
         <Link href="/admin" onClick={closeMenu}>
           カードメンテナンス
         </Link>

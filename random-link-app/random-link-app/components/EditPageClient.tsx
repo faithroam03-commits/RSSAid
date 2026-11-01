@@ -18,6 +18,8 @@ export default function EditPageClient({
 }: Props) {
   const searchParams = useSearchParams();
   const fromHome = searchParams.get("from") === "home";
+  const fromSlideshow =
+  searchParams.get("from") === "slideshow";
   const [item, setItem] = useState<
     Awaited<ReturnType<typeof getClientLink>>
   >(undefined);
@@ -64,10 +66,11 @@ export default function EditPageClient({
   return (
     <>
       <h1>{item.media_id != null ? "メディア編集" : "URL編集"}</h1>
- <EditLinkForm
+<EditLinkForm
   item={item}
   genres={genres}
   fromHome={fromHome}
+  fromSlideshow={fromSlideshow}
 />
     </>
   );

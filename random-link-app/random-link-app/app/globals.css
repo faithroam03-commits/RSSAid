@@ -771,3 +771,145 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   margin: 16px 0;
   border-radius: 14px;
 }
+
+/* ===== Slideshow ===== */
+
+/* スライドショー表示中だけ背景を黒にする */
+body:has(.slideshowPage) {
+  background: #0b0b0d;
+  color: #f5f5f5;
+}
+
+/* 共通ヘッダーも黒基調にする */
+body:has(.slideshowPage) .header {
+  background: #141416;
+  border-bottom: 1px solid #333;
+  color: #fff;
+}
+
+body:has(.slideshowPage) .brand {
+  color: #fff;
+}
+
+/* スライドショーだけ通常の幅・余白制限を解除 */
+body:has(.slideshowPage) > .container {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* スライドショー専用領域 */
+.slideshowPage {
+  min-height: calc(100dvh - 56px);
+  background: #0b0b0d;
+  color: #f5f5f5;
+  padding: 20px 16px;
+}
+
+.slideshowPage h1 {
+  color: #fff;
+}
+
+/* ===== Slideshow Genre Tabs ===== */
+
+.slideshowPage .genreTabs {
+  background: #0b0b0d;
+  border-bottom: none;
+  padding: 10px 0;
+}
+
+.slideshowPage .genreTab {
+  appearance: none;
+  border: none;
+  background: #29292f;
+  color: #e5e5e5;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.slideshowPage .genreTab.active {
+  background: #e5e5e5;
+  color: #151515;
+}
+
+/* ===== Slideshow Fullscreen ===== */
+
+/* 全画面中は共通ヘッダーを非表示 */
+body:has(.slideshowFullscreen) .header {
+  display: none;
+}
+
+/* 全画面中は余白をなくす */
+.slideshowPage:has(.slideshowFullscreen) {
+  padding: 0;
+  min-height: 100dvh;
+}
+
+.slideshowFullscreen {
+  width: 100%;
+  min-height: 100dvh;
+}
+
+/* 画像表示エリアを画面上部から拡大 */
+.slideshowFullscreen > div:first-of-type {
+  margin-top: 0 !important;
+  height: calc(100dvh - 84px) !important;
+  width: 100%;
+}
+
+/* 画像を縦横比を維持したまま拡大 */
+.slideshowFullscreen > div:first-of-type img {
+  max-height: calc(100dvh - 84px) !important;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* 操作ボタンを画面下部に固定 */
+.slideshowFullscreen > div:last-of-type {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  margin-top: 0 !important;
+  padding: 10px 12px;
+  padding-bottom: calc(
+    10px + env(safe-area-inset-bottom)
+  );
+  display: flex;
+  justify-content: center;
+  gap: 0px;
+  background: #0b0b0d;
+}
+
+/* ===== Slideshow Controls ===== */
+
+.slideshowControls {
+  width: 100%;
+  box-sizing: border-box;
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px !important;
+  padding: 0 6px;
+}
+
+.slideshowControls > button {
+  width: 100% !important;
+  height: 46px !important;
+  min-width: 0;
+  padding: 0 !important;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+/* 編集ボタンは青い丸型を維持 */
+.slideshowControls > button[aria-label="表示中のカードを編集"] {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 50% !important;
+  justify-self: center;
+}
