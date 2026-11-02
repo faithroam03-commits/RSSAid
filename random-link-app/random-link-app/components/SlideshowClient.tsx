@@ -20,6 +20,21 @@ const router = useRouter();
 function openCurrentItem() {
   if (!currentItem) return;
 
+  // カードを開く前に自動再生を停止する
+  setIsPlaying(false);
+
+  // スライドショーの表示状態を一時保存
+  sessionStorage.setItem(
+    "randomLinkSlideshowReturnState",
+    JSON.stringify({
+      genre: selectedGenre,
+      mode: playbackMode,
+      currentItemId: currentItem.id,
+      historyIds: history.map((item) => item.id),
+      historyIndex,
+    })
+  );
+
   if (currentItem.url) {
     openInBrowser(currentItem.url);
   } else if (currentItem.media_id != null) {
@@ -92,46 +107,98 @@ setPlaybackMode(
     };
   }, []);
 
-  useEffect(() => {
-    const filtered = items.filter(
-      (item) =>
-        item.enabled === 1 &&
-        (selectedGenre === "ALL" ||
-          item.genre === selectedGenre)
-    );
+useEffect(() => {
+  if (loading) return;
 
-if (filtered.length === 0) {
-  setCurrentItem(null);
-  setHistory([]);
-  setHistoryIndex(-1);
-  return;
-}
-
-let firstItem: LinkRecord;
-
-if (playbackMode === "newest") {
-  const sorted = [...filtered].sort((a, b) => {
-    const dateDiff =
-      new Date(b.created_at).getTime() -
-      new Date(a.created_at).getTime();
-
-    return dateDiff || b.id - a.id;
-  });
-
-  firstItem = sorted[0];
-} else {
-  const index = Math.floor(
-    Math.random() * filtered.length
+  const filtered = items.filter(
+    (item) =>
+      item.enabled === 1 &&
+      (selectedGenre === "ALL" ||
+        item.genre === selectedGenre)
   );
 
-  firstItem = filtered[index];
-}
+  if (filtered.length === 0) {
+    setCurrentItem(null);
+    setHistory([]);
+    setHistoryIndex(-1);
+    return;
+  }
 
-setCurrentItem(firstItem);
-setHistory([firstItem]);
-setHistoryIndex(0);
-  }, [items, selectedGenre, playbackMode]);
+  // カードを開く前の表示状態を復元
+  const savedState = sessionStorage.getItem(
+    "randomLinkSlideshowReturnState"
+  );
 
+if (savedState) {
+  try {
+      const saved = JSON.parse(savedState);
+
+      if (
+        saved.genre === selectedGenre &&
+        saved.mode === playbackMode &&
+        Array.isArray(saved.historyIds) &&
+        Number.isInteger(saved.historyIndex)
+      ) {
+        const restoredHistory = saved.historyIds
+          .map((id: number) =>
+            filtered.find((item) => item.id === id)
+          )
+          .filter(
+            (item: LinkRecord | undefined): item is LinkRecord =>
+              item !== undefined
+          );
+
+        const index: number = saved.historyIndex;
+
+        if (
+          restoredHistory.length === saved.historyIds.length &&
+          index >= 0 &&
+          index < restoredHistory.length &&
+          restoredHistory[index].id === saved.currentItemId
+) {
+  sessionStorage.removeItem(
+    "randomLinkSlideshowReturnState"
+  );
+
+  setHistory(restoredHistory);
+  setHistoryIndex(index);
+  setCurrentItem(restoredHistory[index]);
+  return;
+        }
+      }
+    } catch (error) {
+      console.error(
+        "スライドショーの表示状態を復元できませんでした。",
+        error
+      );
+    }
+  }
+
+  // 復元情報がなければ通常の初期表示
+  let firstItem: LinkRecord;
+
+  if (playbackMode === "newest") {
+    const sorted = [...filtered].sort((a, b) => {
+      const dateDiff =
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime();
+
+      return dateDiff || b.id - a.id;
+    });
+
+    firstItem = sorted[0];
+  } else {
+    const index = Math.floor(
+      Math.random() * filtered.length
+    );
+
+    firstItem = filtered[index];
+  }
+
+  setCurrentItem(firstItem);
+  setHistory([firstItem]);
+  setHistoryIndex(0);
+}, [items, selectedGenre, playbackMode, loading]);
   function changeGenre(genre: string) {
     setSelectedGenre(genre);
     localStorage.setItem(GENRE_STORAGE_KEY, genre);
@@ -506,12 +573,26 @@ justifyContent: "center",
 <button
   type="button"
   onClick={() => {
-    if (!currentItem) return;
+  if (!currentItem) return;
 
-    router.push(
-      `/admin/${currentItem.id}?from=slideshow`
-    );
-  }}
+  setIsPlaying(false);
+
+  sessionStorage.setItem(
+    "randomLinkSlideshowReturnState",
+    JSON.stringify({
+      genre: selectedGenre,
+      mode: playbackMode,
+      currentItemId: currentItem.id,
+      historyIds: history.map((item) => item.id),
+      historyIndex,
+    })
+  );
+
+  router.push(
+    `/admin/${currentItem.id}?from=slideshow`
+  );
+}}
+
   disabled={!currentItem}
   aria-label="表示中のカードを編集"
   title="カードを編集"
