@@ -131,10 +131,6 @@ tracking = details.open
         <Link href="/genres" onClick={closeMenu}>
           ジャンル管理
         </Link>
-       
-       <Link href="/backup" onClick={closeMenu}>
-  バックアップ
-</Link>
 
 <Link href="/settings" onClick={closeMenu}>
   設定

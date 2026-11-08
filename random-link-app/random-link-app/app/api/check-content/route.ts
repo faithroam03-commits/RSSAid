@@ -120,12 +120,16 @@ for (const item of items) {
       unverifiable: false,
     });
   } catch (error) {
-    console.error(
-      `Cloud Vision check failed for item ${item.id}:`,
-      error,
-    );
+  const message =
+    error instanceof Error
+      ? error.message
+      : String(error);
 
-    results.push({
+  console.log(
+    `Cloud Vision check failed for item ${item.id}: ${message}`
+  );
+
+  results.push({
       id: item.id,
       r18: false,
       violent: false,

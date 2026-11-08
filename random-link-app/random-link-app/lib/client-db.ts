@@ -13,9 +13,11 @@ thumbnail_url: string | null;
 image_fit: "cover" | "contain";
 media_id?: number | null;
 genre: string;
-      enabled: number;
-      created_at: string;
-      updated_at: string;
+enabled: number;
+show_in_all?: number;
+show_in_genre?: number;
+created_at: string;
+updated_at: string;
     };
     indexes: {
       "by-genre": string;
@@ -206,9 +208,11 @@ thumbnail_url: input.thumbnailUrl ?? null,
 image_fit: input.imageFit ?? "contain",
 media_id: input.mediaId ?? null,
 genre: finalGenre,
-    enabled: 1,
-    created_at: now,
-    updated_at: now,
+enabled: 1,
+show_in_all: 1,
+show_in_genre: 1,
+created_at: now,
+updated_at: now,
   });
 
   await tx.done;
@@ -321,6 +325,8 @@ export type ClientLinkUpdate = {
   imageFit?: "cover" | "contain";
   genre?: string;
   enabled?: number;
+  showInAll?: number;
+  showInGenre?: number;
 };
 
 export async function updateClientLink(
@@ -347,6 +353,16 @@ export async function updateClientLink(
     image_fit: input.imageFit ?? current.image_fit,
     genre: input.genre ?? current.genre,
     enabled: input.enabled ?? current.enabled,
+    show_in_all:
+      input.showInAll ??
+      (input.enabled !== undefined
+        ? input.enabled
+        : current.show_in_all),
+    show_in_genre:
+      input.showInGenre ??
+      (input.enabled !== undefined
+        ? input.enabled
+        : current.show_in_genre),
     updated_at: new Date().toISOString(),
   };
 
@@ -543,17 +559,16 @@ export async function getRandomClientLinks(
 
   const allLinks = await db.getAll("links");
 
-  const filtered = allLinks.filter((item) => {
-    if (item.enabled !== 1) {
-      return false;
-    }
+const filtered = allLinks.filter((item) => {
+  if (genre && genre !== "ALL") {
+    return (
+      item.genre === genre &&
+      (item.show_in_genre ?? item.enabled) === 1
+    );
+  }
 
-    if (genre && genre !== "ALL") {
-      return item.genre === genre;
-    }
-
-    return true;
-  });
+  return (item.show_in_all ?? item.enabled) === 1;
+});
 
   for (let i = filtered.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -573,14 +588,26 @@ export async function hasClientLinkByUrl(url: string) {
   return links.some((item) => item.url === url);
 }
 export type ClientSharedGenreData = {
-  version: 1;
+  version: 1 | 2;
   genreName: string;
   exportedAt?: string;
+
   links: Array<{
     url: string;
     title: string;
     thumbnail_url: string | null;
     image_fit: "cover" | "contain";
+    media_id?: number | null;
+    show_in_all?: number;
+    show_in_genre?: number;
+  }>;
+
+  media?: Array<{
+    id: number;
+    data: string;
+    filename: string;
+    mime_type: string;
+    created_at: string;
   }>;
 };
 export async function exportClientGenre(
@@ -594,111 +621,360 @@ export async function exportClientGenre(
     genreName
   );
 
+  // このジャンルで使用しているメディアIDだけ取得
+  const mediaIds = [
+    ...new Set(
+      links
+        .map((link) => link.media_id)
+        .filter(
+          (id): id is number =>
+            typeof id === "number"
+        )
+    ),
+  ];
+
+  const media: NonNullable<
+    ClientSharedGenreData["media"]
+  > = [];
+
+  for (const mediaId of mediaIds) {
+    const record = await db.get("media", mediaId);
+
+    if (!record) {
+      throw new Error(
+        `メディアID ${mediaId} の画像が見つかりません。`
+      );
+    }
+
+    // 画像・GIFのデータをBase64形式に変換
+    const data = await new Promise<string>(
+      (resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          if (typeof reader.result !== "string") {
+            reject(
+              new Error("画像の変換に失敗しました。")
+            );
+            return;
+          }
+
+          resolve(reader.result);
+        };
+
+        reader.onerror = () => {
+          reject(
+            new Error("画像の読み込みに失敗しました。")
+          );
+        };
+
+        reader.readAsDataURL(record.blob);
+      }
+    );
+
+    media.push({
+      id: record.id,
+      data,
+      filename: record.filename,
+      mime_type: record.mime_type,
+      created_at: record.created_at,
+    });
+  }
+
   return {
-    version: 1,
+    version: 2,
     genreName,
     exportedAt: new Date().toISOString(),
+
     links: links.map((link) => ({
       url: link.url,
       title: link.title,
       thumbnail_url: link.thumbnail_url,
       image_fit: link.image_fit,
+      media_id: link.media_id ?? null,
+      show_in_all:
+        link.show_in_all ?? link.enabled,
+      show_in_genre:
+        link.show_in_genre ?? link.enabled,
     })),
+
+    media,
   };
+}
+
+async function prepareSharedGenreMedia(
+  data: ClientSharedGenreData
+) {
+  if (data.version !== 2) {
+    return [];
+  }
+
+  if (!Array.isArray(data.media)) {
+    throw new Error(
+      "共有ジャンルのメディアデータがありません。"
+    );
+  }
+
+  const seenIds = new Set<number>();
+
+  const prepared: Array<{
+    oldId: number;
+    blob: Blob;
+    filename: string;
+    mimeType: string;
+    createdAt: string;
+  }> = [];
+
+  for (const item of data.media) {
+    if (
+      !item ||
+      !Number.isSafeInteger(item.id) ||
+      seenIds.has(item.id) ||
+      typeof item.data !== "string" ||
+      !/^data:image\/(?:png|jpeg|gif|webp);base64,/.test(
+        item.data
+      ) ||
+      typeof item.filename !== "string" ||
+      !item.filename.trim()
+    ) {
+      throw new Error(
+        "共有ジャンルの画像データが不正です。"
+      );
+    }
+
+    seenIds.add(item.id);
+
+    const response = await fetch(item.data);
+    const blob = await response.blob();
+
+    prepared.push({
+      oldId: item.id,
+      blob,
+      filename: item.filename,
+      mimeType: blob.type,
+      createdAt:
+        typeof item.created_at === "string"
+          ? item.created_at
+          : new Date().toISOString(),
+    });
+  }
+
+  return prepared;
 }
 
 export async function importClientSharedGenre(
   data: ClientSharedGenreData,
   genreName: string,
   safeUrls: string[],
-  excludedIndexes: number[] = []
+  excludedIndexes: number[] = [],
+  approvedMediaIndexes: number[] = []
 ) {
   if (
     !data ||
-    data.version !== 1 ||
-    !Array.isArray(data.links)
+    (data.version !== 1 && data.version !== 2) ||
+    !Array.isArray(data.links) ||
+    (data.version === 2 && !Array.isArray(data.media))
   ) {
-    throw new Error("対応していない共有ジャンルファイルです。");
+    throw new Error(
+      "対応していない共有ジャンルファイルです。"
+    );
   }
 
   const targetGenre = genreName.trim();
 
   if (!targetGenre) {
-    throw new Error("取り込み先ジャンル名を入力してください。");
+    throw new Error(
+      "取り込み先ジャンル名を入力してください。"
+    );
   }
 
   const safeUrlSet = new Set(safeUrls);
   const excludedIndexSet = new Set(excludedIndexes);
+  const approvedMediaIndexSet = new Set(
+  approvedMediaIndexes
+);
+
+  // データベースへの書き込み前に画像を変換
+  const preparedMedia =
+    await prepareSharedGenreMedia(data);
+
+  const mediaByOldId = new Map(
+    preparedMedia.map((item) => [item.oldId, item])
+  );
+
+  // 取り込み対象のカードを確定
+  const selectedLinks = data.links.filter(
+    (link, index) => {
+      if (
+        excludedIndexSet.has(index) ||
+        !link ||
+        typeof link.url !== "string" ||
+        typeof link.title !== "string"
+      ) {
+        return false;
+      }
+
+      const url = link.url.trim();
+
+      if (data.version === 2 && link.media_id != null) {
+        if (
+          !Number.isSafeInteger(link.media_id) ||
+          !mediaByOldId.has(link.media_id)
+        ) {
+          throw new Error(
+            "カードに対応するメディアがありません。"
+          );
+        }
+
+        // メディアカードは明示的に承認されたものだけ登録
+return (
+  approvedMediaIndexSet.has(index) &&
+  (!url || safeUrlSet.has(url))
+);
+      }
+
+      return Boolean(url) && safeUrlSet.has(url);
+    }
+  );
+
   const db = await getClientDb();
 
-  const existingLinks = await db.getAll("links");
-  const existingGenres = await db.getAll("genres");
-
-  let nextId = Math.max(
-    Date.now(),
-    ...existingLinks.map((item) => item.id + 1),
-    ...existingGenres.map((item) => item.id + 1)
+  // ジャンル・カード・メディアを一括保存
+  const tx = db.transaction(
+    ["links", "genres", "media"],
+    "readwrite"
   );
 
-  const existingGenre = existingGenres.find(
-    (item) => item.name === targetGenre
-  );
+  try {
+    const linksStore = tx.objectStore("links");
+    const genresStore = tx.objectStore("genres");
+    const mediaStore = tx.objectStore("media");
 
-  let addedGenre = false;
+    const [existingLinks, existingGenres, existingMedia] =
+      await Promise.all([
+        linksStore.getAll(),
+        genresStore.getAll(),
+        mediaStore.getAll(),
+      ]);
 
-  if (!existingGenre) {
-    const maxSortOrder = existingGenres.reduce(
-      (max, item) => Math.max(max, item.sort_order),
-      0
+    let nextId = Math.max(
+      Date.now(),
+      ...existingLinks.map((item) => item.id + 1),
+      ...existingGenres.map((item) => item.id + 1),
+      ...existingMedia.map((item) => item.id + 1)
     );
 
-    await db.add("genres", {
-      id: nextId++,
-      name: targetGenre,
-      sort_order: maxSortOrder + 1,
-    });
+    let addedGenre = false;
 
-    addedGenre = true;
-  }
-
-  let addedLinks = 0;
-
-  for (const [index, link] of data.links.entries()) {
     if (
-      typeof link.url !== "string" ||
-      !link.url.trim() ||
-      typeof link.title !== "string" ||
-      !safeUrlSet.has(link.url.trim()) ||
-      excludedIndexSet.has(index)
+      !existingGenres.some(
+        (item) => item.name === targetGenre
+      )
     ) {
-      continue;
+      const maxSortOrder = existingGenres.reduce(
+        (max, item) =>
+          Math.max(max, item.sort_order),
+        0
+      );
+
+      await genresStore.add({
+        id: nextId++,
+        name: targetGenre,
+        sort_order: maxSortOrder + 1,
+      });
+
+      addedGenre = true;
     }
 
-    await db.add("links", {
-      id: nextId++,
-      url: link.url.trim(),
-      title: link.title,
-      thumbnail_url:
-        typeof link.thumbnail_url === "string"
-          ? link.thumbnail_url
-          : null,
-      image_fit:
-        link.image_fit === "contain"
-          ? "contain"
-          : "cover",
-      genre: targetGenre,
-      enabled: 1,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
+    // 旧メディアIDと新メディアIDの対応表
+    const mediaIdMap = new Map<number, number>();
 
-    addedLinks++;
+    for (const link of selectedLinks) {
+      if (
+        data.version !== 2 ||
+        link.media_id == null ||
+        mediaIdMap.has(link.media_id)
+      ) {
+        continue;
+      }
+
+      const record = mediaByOldId.get(link.media_id);
+
+      if (!record) {
+        throw new Error(
+          "メディアデータが見つかりません。"
+        );
+      }
+
+      const newId = nextId++;
+
+      await mediaStore.add({
+        id: newId,
+        blob: record.blob,
+        filename: record.filename,
+        mime_type: record.mimeType,
+        created_at: record.createdAt,
+      });
+
+      mediaIdMap.set(link.media_id, newId);
+    }
+
+    const now = new Date().toISOString();
+
+    for (const link of selectedLinks) {
+      const showInAll =
+        data.version === 2 && link.show_in_all === 0
+          ? 0
+          : 1;
+
+      const showInGenre =
+        data.version === 2 && link.show_in_genre === 0
+          ? 0
+          : 1;
+
+      await linksStore.add({
+        id: nextId++,
+        url: link.url.trim(),
+        title: link.title,
+        thumbnail_url:
+          typeof link.thumbnail_url === "string"
+            ? link.thumbnail_url
+            : null,
+        image_fit:
+          link.image_fit === "contain"
+            ? "contain"
+            : "cover",
+        media_id:
+          data.version === 2 && link.media_id != null
+            ? mediaIdMap.get(link.media_id) ?? null
+            : null,
+        genre: targetGenre,
+        enabled:
+          showInAll === 1 || showInGenre === 1
+            ? 1
+            : 0,
+        show_in_all: showInAll,
+        show_in_genre: showInGenre,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    await tx.done;
+
+    return {
+      addedLinks: selectedLinks.length,
+      addedGenre,
+    };
+  } catch (error) {
+    try {
+      tx.abort();
+    } catch {
+      // 既に中断されている場合
+    }
+
+    throw error;
   }
-
-  return {
-    addedLinks,
-    addedGenre,
-  };
 }
 
 export type ClientBackupData = {
@@ -713,6 +989,8 @@ export type ClientBackupData = {
     media_id?: number | null;
     genre: string;
     enabled: number;
+    show_in_all?: number;
+    show_in_genre?: number;
     created_at: string;
     updated_at: string;
   }>;
@@ -898,6 +1176,16 @@ if (
           );
         }
       }
+      // 旧バックアップはenabledから表示設定を復元
+      const showInAll =
+        (link.show_in_all ?? link.enabled) === 0
+          ? 0
+          : 1;
+
+      const showInGenre =
+        (link.show_in_genre ?? link.enabled) === 0
+          ? 0
+          : 1;
 
       await linksStore.add({
         id: nextId++,
@@ -913,7 +1201,12 @@ if (
             : "cover",
         media_id: mediaId,
         genre,
-        enabled: link.enabled === 0 ? 0 : 1,
+        enabled:
+          showInAll === 1 || showInGenre === 1
+            ? 1
+            : 0,
+        show_in_all: showInAll,
+        show_in_genre: showInGenre,
         created_at:
           typeof link.created_at === "string"
             ? link.created_at

@@ -11,11 +11,23 @@ type CheckItem = {
 
 function normalizeThumbnailUrl(rawUrl: string) {
   try {
-    const url = new URL(rawUrl);
+const url = new URL(rawUrl);
 
-    if (url.hostname !== "pbs.twimg.com") {
-      return rawUrl;
-    }
+// ebookjapanの書影サムネイルに付く
+// 数字のみのキャッシュ更新パラメータを除外
+if (
+  url.hostname === "cache2-ebookjapan.akamaized.net" &&
+  /^\/contents\/thumb\/s\/KD\d+\.jpg$/i.test(
+    url.pathname
+  ) &&
+  /^\?\d+$/.test(url.search)
+) {
+  return `${url.origin}${url.pathname}`;
+}
+
+if (url.hostname !== "pbs.twimg.com") {
+  return rawUrl;
+}
 
     let pathname = url.pathname;
 

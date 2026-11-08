@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 import {
   exportClientGenre,
@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { compareImages } from "@/lib/compare-images";
+import { extractGifCheckFrames } from "@/lib/extract-gif-check-frames";
 
 export default function BackupPage() {
 
@@ -218,14 +219,16 @@ const backup: ClientBackupData = {
     const text = await file.text();
     const data = JSON.parse(text) as ClientSharedGenreData;
 
-    if (
-      data.version !== 1 ||
-      typeof data.genreName !== "string" ||
-      !data.genreName.trim() ||
-      !Array.isArray(data.links)
-    ) {
-      throw new Error();
-    }
+if (
+  !data ||
+  (data.version !== 1 && data.version !== 2) ||
+  typeof data.genreName !== "string" ||
+  !data.genreName.trim() ||
+  !Array.isArray(data.links) ||
+  (data.version === 2 && !Array.isArray(data.media))
+) {
+  throw new Error();
+}
 
     setSharedImportData(data);
     setSharedImportGenreName(data.genreName.trim());
@@ -316,7 +319,12 @@ async function runSharedImport(skipFirstWarning = false) {
     setSharedImportResult("");
 
     try {
-      const urls = sharedImportData.links.map((link) => link.url);
+const urls = sharedImportData.links
+  .map((link) => link.url)
+  .filter(
+    (url): url is string =>
+      typeof url === "string" && url.trim() !== ""
+  );
 
       const urlCheckResults: {
         url: string;
@@ -356,25 +364,135 @@ async function runSharedImport(skipFirstWarning = false) {
         .filter((result) => result.safe)
         .map((result) => result.url);
 
-      const blockedCount = sharedImportData.links.length - safeUrls.length;
+      const blockedCount = urls.length - safeUrls.length;
 
       const safeUrlSet = new Set(safeUrls);
 
-      const contentItems = sharedImportData.links
-        .map((link, index) => ({
-          link,
-          index,
-        }))
-        .filter(
-          ({ link }) =>
-            safeUrlSet.has(link.url) &&
-            typeof link.thumbnail_url === "string" &&
-            link.thumbnail_url.trim(),
-        )
-        .map(({ link, index }) => ({
-          id: index,
-          imageUrl: link.thumbnail_url!.trim(),
-        }));
+
+const sharedMediaMap = new Map<number, string>();
+
+if (sharedImportData.version === 2) {
+  for (const item of sharedImportData.media ?? []) {
+    let imageData = item.data;
+
+    // 大容量JPEGだけ検査用に縮小
+    if (
+      /^data:image\/jpeg;base64,/i.test(imageData) &&
+      imageData.length > 4_000_000
+    ) {
+      try {
+        const response = await fetch(imageData);
+        const blob = await response.blob();
+        const bitmap = await createImageBitmap(blob);
+
+        try {
+          const maxSide = 1280;
+          const scale = Math.min(
+            1,
+            maxSide / Math.max(
+              bitmap.width,
+              bitmap.height
+            )
+          );
+
+          const canvas = document.createElement("canvas");
+
+          canvas.width = Math.max(
+            1,
+            Math.round(bitmap.width * scale)
+          );
+          canvas.height = Math.max(
+            1,
+            Math.round(bitmap.height * scale)
+          );
+
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            throw new Error(
+              "検査用画像を作成できませんでした。"
+            );
+          }
+
+          ctx.drawImage(
+            bitmap,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+
+          imageData = canvas.toDataURL(
+            "image/jpeg",
+            0.75
+          );
+        } finally {
+          bitmap.close();
+        }
+      } catch {
+        // 縮小失敗時は安全確認済みとして扱わない
+        imageData = "";
+      }
+    }
+
+    sharedMediaMap.set(item.id, imageData);
+  }
+}
+
+const contentItems = sharedImportData.links.flatMap(
+  (link, index) => {
+    if (!link || typeof link.url !== "string") {
+      return [];
+    }
+
+    const url = link.url.trim();
+
+    // URLがある場合はWeb Riskの結果を確認
+    if (url && !safeUrlSet.has(url)) {
+      return [];
+    }
+
+    // v2のメディアカード
+    if (
+      sharedImportData.version === 2 &&
+      link.media_id != null
+    ) {
+      const mediaData = sharedMediaMap.get(
+        link.media_id
+      );
+
+      // 今回は静止画のみ検査対象とする
+      if (
+        typeof mediaData !== "string" ||
+        !/^data:image\/(?:png|jpeg|webp);base64,/i.test(
+          mediaData
+        ) ||
+        mediaData.length > 4_000_000
+      ) {
+        return [];
+      }
+
+      return [{
+        id: index,
+        imageUrl: mediaData,
+      }];
+    }
+
+    // 従来のURLカードのサムネイル検査
+    if (
+      url &&
+      typeof link.thumbnail_url === "string" &&
+      link.thumbnail_url.trim()
+    ) {
+      return [{
+        id: index,
+        imageUrl: link.thumbnail_url.trim(),
+      }];
+    }
+
+    return [];
+  }
+);
 
 let contentResults: SharedContentCheckResult[] = [];
 let thumbnailResults: SharedThumbnailCheckResult[] = [];
@@ -388,9 +506,43 @@ let contentUnverifiableCount = 0;
 
       if (contentItems.length > 0) {
         const CONTENT_BATCH_SIZE = 30;
+const MAX_CONTENT_BATCH_CHARS = 6_000_000;
 
-        for (let i = 0; i < contentItems.length; i += CONTENT_BATCH_SIZE) {
-          const batch = contentItems.slice(i, i + CONTENT_BATCH_SIZE);
+let i = 0;
+
+while (i < contentItems.length) {
+  let end = i;
+  let totalChars = 0;
+
+  while (
+    end < contentItems.length &&
+    end - i < CONTENT_BATCH_SIZE &&
+    totalChars + contentItems[end].imageUrl.length <=
+      MAX_CONTENT_BATCH_CHARS
+  ) {
+    totalChars += contentItems[end].imageUrl.length;
+    end++;
+  }
+
+  // 1枚でも容量上限を超える場合は確認不可
+  if (end === i) {
+    const oversized = contentItems[i];
+
+    contentResults.push({
+      id: oversized.id,
+      r18: false,
+      violent: false,
+      bug: false,
+      unverifiable: true,
+    });
+
+    contentUnverifiableCount++;
+    i++;
+    continue;
+  }
+
+  const batch = contentItems.slice(i, end);
+  i = end;
 
           const contentRes = await fetch("/api/check-content", {
             method: "POST",
@@ -426,6 +578,187 @@ let contentUnverifiableCount = 0;
             contentData.unverifiableCount ?? 0;
         }
       }
+
+// GIFから抽出した複数フレームを安全性確認
+if (sharedImportData.version === 2) {
+  const gifMediaMap = new Map(
+    (sharedImportData.media ?? []).map(
+      (item) => [item.id, item.data] as const
+    )
+  );
+
+  for (
+    const [index, link] of
+    sharedImportData.links.entries()
+  ) {
+    if (link?.media_id == null) {
+      continue;
+    }
+
+    const gifData = gifMediaMap.get(link.media_id);
+
+    if (
+      typeof gifData !== "string" ||
+      !/^data:image\/gif;base64,/i.test(gifData)
+    ) {
+      continue;
+    }
+
+    const url =
+      typeof link.url === "string"
+        ? link.url.trim()
+        : "";
+
+    if (url && !safeUrlSet.has(url)) {
+      continue;
+    }
+
+    // 検査失敗時は必ず確認不可
+    let gifResult: SharedContentCheckResult = {
+      id: index,
+      r18: false,
+      violent: false,
+      bug: false,
+      unverifiable: true,
+    };
+
+    try {
+      const frames = await extractGifCheckFrames(
+        gifData
+      );
+
+      const totalLength = frames.reduce(
+        (sum, frame) => sum + frame.length,
+        0
+      );
+
+      if (
+        frames.length === 0 ||
+        frames.length > 5 ||
+        totalLength > 4_000_000
+      ) {
+        throw new Error(
+          "GIFの検査用画像が大きすぎます。"
+        );
+      }
+
+      const response = await fetch(
+        "/api/check-content",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            items: frames.map(
+              (imageUrl, frameIndex) => ({
+                id: frameIndex,
+                imageUrl,
+              })
+            ),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "GIFの安全性を確認できませんでした。"
+        );
+      }
+
+      const data = await response.json();
+
+      const checks =
+        data.results as
+          | SharedContentCheckResult[]
+          | undefined;
+
+      if (
+        !Array.isArray(checks) ||
+        checks.length !== frames.length ||
+        checks.some(
+          (item, frameIndex) =>
+            item.id !== frameIndex ||
+            typeof item.r18 !== "boolean" ||
+            typeof item.violent !== "boolean" ||
+            typeof item.bug !== "boolean" ||
+            typeof item.unverifiable !== "boolean"
+        )
+      ) {
+        throw new Error(
+          "GIFの検査結果が不正です。"
+        );
+      }
+
+      // いずれかのフレームで検出したら
+      // GIFカード全体の検査結果に反映
+      gifResult = {
+        id: index,
+        r18: checks.some((item) => item.r18),
+        violent: checks.some(
+          (item) => item.violent
+        ),
+        bug: checks.some((item) => item.bug),
+        unverifiable: checks.some(
+          (item) => item.unverifiable
+        ),
+      };
+    } catch {
+      // 非対応・通信エラーなどは確認不可のまま
+    }
+
+    contentResults.push(gifResult);
+
+    if (gifResult.r18) r18Count++;
+    if (gifResult.violent) violenceCount++;
+    if (gifResult.bug) bugCount++;
+
+    if (gifResult.unverifiable) {
+      contentUnverifiableCount++;
+    }
+  }
+}
+
+// 検査結果がないメディアを「確認不可」に分類
+if (sharedImportData.version === 2) {
+  const checkedMediaIndexes = new Set(
+    contentResults.map((item) => item.id)
+  );
+
+  for (
+    const [index, link] of
+    sharedImportData.links.entries()
+  ) {
+    if (link?.media_id == null) {
+      continue;
+    }
+
+    const url =
+      typeof link.url === "string"
+        ? link.url.trim()
+        : "";
+
+    // Web RiskでブロックされたURLは対象外
+    if (url && !safeUrlSet.has(url)) {
+      continue;
+    }
+
+    // すでに検査結果があるメディアはそのまま
+    if (checkedMediaIndexes.has(index)) {
+      continue;
+    }
+
+    contentResults.push({
+      id: index,
+      r18: false,
+      violent: false,
+      bug: false,
+      unverifiable: true,
+    });
+
+    contentUnverifiableCount++;
+  }
+}
 
 const thumbnailItems = sharedImportData.links
   .map((link, index) => ({
@@ -532,15 +865,50 @@ if (
   return;
 }
 
-      const result = await importClientSharedGenre(
-        sharedImportData,
-        targetGenre,
-        safeUrls,
-      );
+// 安全確認が完了したメディアだけを承認
+const approvedMediaIndexes =
+  sharedImportData.version === 2
+    ? sharedImportData.links.flatMap(
+        (link, index) => {
+          if (link?.media_id == null) {
+            return [];
+          }
 
-      setSharedImportResult(
-        `${result.addedLinks}件取り込み、${blockedCount}件ブロックしました。`,
-      );
+          const result = contentResults.find(
+            (item) => item.id === index
+          );
+
+          if (
+            !result ||
+            result.r18 !== false ||
+            result.violent !== false ||
+            result.bug !== false ||
+            result.unverifiable !== false
+          ) {
+            return [];
+          }
+
+          return [index];
+        }
+      )
+    : [];
+
+const result = await importClientSharedGenre(
+  sharedImportData,
+  targetGenre,
+  safeUrls,
+  [],
+  approvedMediaIndexes
+);
+
+const skippedCount =
+  sharedImportData.links.length - result.addedLinks;
+
+setSharedImportResult(
+  `${result.addedLinks}件取り込み、` +
+    `${skippedCount}件を取り込みませんでした。` +
+    `（うちWeb Riskブロック：${blockedCount}件）`,
+);
 
       const records = await getClientGenreRecords();
 
@@ -593,21 +961,54 @@ if (!targetGenre) {
   throw new Error("取り込み先ジャンル名を入力してください。");
 }
 
+// 警告確認後も、検査済みのメディアだけ承認
+const approvedMediaIndexes =
+  sharedImportData.version === 2
+    ? sharedImportData.links.flatMap(
+        (link, index) => {
+          if (
+            link?.media_id == null ||
+            excludedIndexes.includes(index)
+          ) {
+            return [];
+          }
+
+          const check =
+            pendingSharedImport.contentResults.find(
+              (item) => item.id === index
+            );
+
+          if (
+            check?.r18 !== false ||
+            check.violent !== false ||
+            check.bug !== false ||
+            check.unverifiable !== false
+          ) {
+            return [];
+          }
+
+          return [index];
+        }
+      )
+    : [];
+
 const result = await importClientSharedGenre(
   sharedImportData,
   targetGenre,
   pendingSharedImport.safeUrls,
   excludedIndexes,
+  approvedMediaIndexes
 );
-      
 
-      const contentBlockedCount = excludedIndexes.length;
+const skippedCount =
+  sharedImportData.links.length - result.addedLinks;
 
-      setSharedImportResult(
-        `${result.addedLinks}件取り込み、` +
-          `${pendingSharedImport.blockedCount}件をWeb Riskでブロック、` +
-`${contentBlockedCount}件を安全確認で除外しました。`,
-      );
+setSharedImportResult(
+  `${result.addedLinks}件取り込み、` +
+    `${skippedCount}件を取り込みませんでした。` +
+    `（うちWeb Riskブロック：` +
+    `${pendingSharedImport.blockedCount}件）`,
+);
 
       const records = await getClientGenreRecords();
 
@@ -1010,12 +1411,62 @@ if (
             </>
           )}
 
-          <div style={{ marginTop: 12 }}>
-            「除外して取り込む」を選ぶと、
-            有害コンテンツ判定またはサムネイル画像未検知の
-            カードを除外します。リンク先を確認できなかった
-            カードは除外されません。
-          </div>
+{sharedImportData?.version === 2 && (
+  <div style={{ marginTop: 12 }}>
+    <strong>メディアカードの検査内訳</strong>
+
+    {sharedImportData.links.map((link, index) => {
+      const mediaId = link.media_id;
+
+      if (mediaId == null) {
+        return null;
+      }
+
+      const mediaType =
+        sharedImportData.media?.find(
+          (item) => item.id === mediaId
+        )?.mime_type ?? "不明";
+
+      const check =
+        pendingSharedImport.contentResults.find(
+          (item) => item.id === index
+        );
+
+      const issues = check
+        ? [
+            check.r18 ? "R18" : null,
+            check.violent ? "暴力" : null,
+            check.bug ? "虫" : null,
+            check.unverifiable ? "確認不可" : null,
+          ].filter(Boolean)
+        : [];
+
+      return (
+        <div key={index}>
+          No.{index + 1}（{mediaType}）：
+          {!check
+            ? "検査結果なし"
+            : issues.length > 0
+              ? issues.join("、")
+              : "問題検出なし"}
+        </div>
+      );
+    })}
+  </div>
+)}
+
+<div style={{ marginTop: 12 }}>
+  「除外して取り込む」を選ぶと、
+  有害コンテンツ判定またはサムネイル画像未検知の
+  カードを除外します。
+  「警告付きURLカードも取り込む」では、
+  これらのURLカードも取り込み対象になります。
+  ただし、Web RiskでブロックされたURL、
+  安全性を確認できなかったメディア、
+  問題が検出されたメディアは、
+  どちらを選んでも取り込みません。
+  GIFは最大5フレームの検査結果を使用します。
+</div>
 
           <div
             style={{
@@ -1040,7 +1491,7 @@ if (
               onClick={() => finishSharedImport(false)}
               disabled={sharedImporting}
             >
-              すべて取り込む
+              警告付きURLカードも取り込む
             </button>
 
             <button

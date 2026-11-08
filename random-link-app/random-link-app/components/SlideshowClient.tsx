@@ -110,12 +110,12 @@ setPlaybackMode(
 useEffect(() => {
   if (loading) return;
 
-  const filtered = items.filter(
-    (item) =>
-      item.enabled === 1 &&
-      (selectedGenre === "ALL" ||
-        item.genre === selectedGenre)
-  );
+const filtered = items.filter((item) =>
+  selectedGenre === "ALL"
+    ? (item.show_in_all ?? item.enabled) === 1
+    : item.genre === selectedGenre &&
+      (item.show_in_genre ?? item.enabled) === 1
+);
 
   if (filtered.length === 0) {
     setCurrentItem(null);
@@ -213,12 +213,12 @@ function goNext() {
     return;
   }
 
-  const filtered = items.filter(
-    (item) =>
-      item.enabled === 1 &&
-      (selectedGenre === "ALL" ||
-        item.genre === selectedGenre)
-  );
+const filtered = items.filter((item) =>
+  selectedGenre === "ALL"
+    ? (item.show_in_all ?? item.enabled) === 1
+    : item.genre === selectedGenre &&
+      (item.show_in_genre ?? item.enabled) === 1
+);
 
   if (filtered.length === 0) return;
 

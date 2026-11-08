@@ -34,7 +34,13 @@ export default function EditLinkForm({
   const [genre, setGenre] = useState(item.genre);
   const [showGenreAdd, setShowGenreAdd] = useState(false);
   const [newGenre, setNewGenre] = useState("");
-  const [enabled, setEnabled] = useState(Boolean(item.enabled));
+  const [showInAll, setShowInAll] = useState(
+  Boolean(item.show_in_all ?? item.enabled)
+);
+
+const [showInGenre, setShowInGenre] = useState(
+  Boolean(item.show_in_genre ?? item.enabled)
+);
   const [candidates, setCandidates] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -225,7 +231,9 @@ async function save(e: FormEvent) {
       thumbnailUrl,
       imageFit,
       genre: finalGenre,
-      enabled: enabled ? 1 : 0,
+      enabled: showInAll || showInGenre ? 1 : 0,
+showInAll: showInAll ? 1 : 0,
+showInGenre: showInGenre ? 1 : 0,
     });
 
 setMsg("保存しました。");
@@ -387,10 +395,37 @@ router.push(getReturnPath());
   </div>
 )}
         
-        <label style={{display:"flex", gridTemplateColumns:"auto 1fr", alignItems:"center", justifyContent:"start"}}>
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
-          ランダム表示の対象にする
-        </label>
+<div style={{ display: "grid", gap: 12 }}>
+  <label
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    }}
+  >
+    <input
+      type="checkbox"
+      checked={showInAll}
+      onChange={(e) => setShowInAll(e.target.checked)}
+    />
+    ALLに表示する
+  </label>
+
+  <label
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    }}
+  >
+    <input
+      type="checkbox"
+      checked={showInGenre}
+      onChange={(e) => setShowInGenre(e.target.checked)}
+    />
+    ジャンルタブに表示する
+  </label>
+</div>
 {thumbnailUrl && (
   <div>
     <div className="small">現在のサムネイル</div>

@@ -6,7 +6,9 @@ export type LinkRecord = {
   image_fit: "cover" | "contain";
   media_id?: number | null;
   genre: string;
-  enabled: number;
-  created_at: string;
-  updated_at: string;
+enabled: number;
+show_in_all?: number;
+show_in_genre?: number;
+created_at: string;
+updated_at: string;
 };

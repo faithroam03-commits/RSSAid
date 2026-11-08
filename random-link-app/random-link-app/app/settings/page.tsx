@@ -216,11 +216,31 @@ async function resetDownloadFolder() {
 </p>
       </section>
 
-      <section className="panel">
-        <Link href="/help">
-          使い方
-        </Link>
-      </section>
+<Link
+  href="/help"
+  className="panel"
+  style={{
+    display: "block",
+    fontWeight: 700,
+    color: "inherit",
+    textDecoration: "none",
+  }}
+>
+  使い方
+</Link>
+
+<Link
+  href="/backup"
+  className="panel"
+  style={{
+    display: "block",
+    fontWeight: 700,
+    color: "inherit",
+    textDecoration: "none",
+  }}
+>
+  バックアップ
+</Link>
     </main>
 );
 }

@@ -53,11 +53,16 @@ if (savedOrder) {
       const allLinks = await getClientLinks();
       const linkMap = new Map(
         allLinks
-          .filter(
-            (link) =>
-              link.enabled === 1 &&
-              (!selectedGenre || link.genre === selectedGenre)
-          )
+.filter((link) => {
+  if (selectedGenre && selectedGenre !== "ALL") {
+    return (
+      link.genre === selectedGenre &&
+      (link.show_in_genre ?? link.enabled) === 1
+    );
+  }
+
+  return (link.show_in_all ?? link.enabled) === 1;
+})
           .map((link) => [link.id, link])
       );
 
