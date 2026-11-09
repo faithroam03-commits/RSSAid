@@ -586,6 +586,7 @@ async function deleteSelectedLinks() {
 
 <AdminTable
   links={links}
+  selectedGenre={selectedGenre}
   onDelete={removeLink}
   bulkMode={bulkMode}
   selectedIds={selectedIds}

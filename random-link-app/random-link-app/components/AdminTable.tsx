@@ -4,6 +4,7 @@ import type { LinkRecord } from "@/lib/types";
 
 type Props = {
   links: LinkRecord[];
+  selectedGenre?: string;
   onDelete: (id: number) => Promise<void>;
   bulkMode: boolean;
   selectedIds: Set<number>;
@@ -12,6 +13,7 @@ type Props = {
 
 export default function AdminTable({
   links,
+  selectedGenre,
   onDelete,
   bulkMode,
   selectedIds,
@@ -85,7 +87,14 @@ export default function AdminTable({
 
                 <td>
                   <div className="actions">
-                    <a className="btn" href={`/admin/${item.id}`}>
+<a
+  className="btn"
+  href={
+    selectedGenre
+      ? `/admin/${item.id}?genre=${encodeURIComponent(selectedGenre)}`
+      : `/admin/${item.id}`
+  }
+>
                       編集
                     </a>
 
@@ -144,7 +153,14 @@ export default function AdminTable({
           </div>
 
           <div className="actions">
-            <a className="btn" href={`/admin/${item.id}`}>
+<a
+  className="btn"
+  href={
+    selectedGenre
+      ? `/admin/${item.id}?genre=${encodeURIComponent(selectedGenre)}`
+      : `/admin/${item.id}`
+  }
+>
               編集
             </a>
 

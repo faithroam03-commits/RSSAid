@@ -17,11 +17,13 @@ export default function EditLinkForm({
   genres,
   fromHome = false,
   fromSlideshow = false,
+  returnGenre,
 }: {
   item: LinkRecord;
   genres: string[];
   fromHome?: boolean;
   fromSlideshow?: boolean;
+  returnGenre?: string;
 }) {
 
   const router = useRouter();
@@ -142,8 +144,13 @@ async function uploadThumbnail(
 }
 
 function getReturnPath() {
-  if (fromSlideshow) return "/slideshow";
-  if (!fromHome) return "/admin";
+if (fromSlideshow) return "/slideshow";
+
+if (!fromHome) {
+  return returnGenre
+    ? `/admin?genre=${encodeURIComponent(returnGenre)}`
+    : "/admin";
+}
 
   const savedOrder = sessionStorage.getItem(
     "randomLinkHomeCardOrder"

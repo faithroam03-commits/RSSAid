@@ -16,8 +16,9 @@ type Props = {
 export default function EditPageClient({
   id,
 }: Props) {
-  const searchParams = useSearchParams();
-  const fromHome = searchParams.get("from") === "home";
+const searchParams = useSearchParams();
+const returnGenre = searchParams.get("genre") ?? undefined;
+const fromHome = searchParams.get("from") === "home";
   const fromSlideshow =
   searchParams.get("from") === "slideshow";
   const [item, setItem] = useState<
@@ -71,6 +72,7 @@ export default function EditPageClient({
   genres={genres}
   fromHome={fromHome}
   fromSlideshow={fromSlideshow}
+  returnGenre={returnGenre}
 />
     </>
   );

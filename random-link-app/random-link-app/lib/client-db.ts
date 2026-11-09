@@ -615,11 +615,17 @@ export async function exportClientGenre(
 ): Promise<ClientSharedGenreData> {
   const db = await getClientDb();
 
-  const links = await db.getAllFromIndex(
+const links = (
+  await db.getAllFromIndex(
     "links",
     "by-genre",
     genreName
-  );
+  )
+).sort(
+  (a, b) =>
+    new Date(b.created_at).getTime() -
+    new Date(a.created_at).getTime()
+);
 
   // このジャンルで使用しているメディアIDだけ取得
   const mediaIds = [
@@ -919,9 +925,10 @@ return (
       mediaIdMap.set(link.media_id, newId);
     }
 
-    const now = new Date().toISOString();
+const nowMs = Date.now();
+const now = new Date(nowMs).toISOString();
 
-    for (const link of selectedLinks) {
+for (const [index, link] of selectedLinks.entries()) {
       const showInAll =
         data.version === 2 && link.show_in_all === 0
           ? 0
@@ -955,8 +962,8 @@ return (
             : 0,
         show_in_all: showInAll,
         show_in_genre: showInGenre,
-        created_at: now,
-        updated_at: now,
+created_at: new Date(nowMs - index).toISOString(),
+updated_at: now,
       });
     }
 
