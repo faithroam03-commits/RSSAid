@@ -14,6 +14,11 @@ import {
 import { downloadThumbnail } from "@/lib/download-thumbnail";
 import { getDisplayImageUrl } from "@/lib/display-image-url";
 import { getWritableDownloadFolder } from "@/lib/download-folder";
+import {
+  saveThumbnailHistory,
+  getSavedThumbnailIds,
+  clearSelectedThumbnailHistory,
+} from "@/lib/thumbnail-history";
 
 type Props = {
   selectedGenre?: string;
@@ -48,6 +53,10 @@ const [bulkDownloadFailures, setBulkDownloadFailures] = useState<
 >([]);
 const bulkDownloadRunning = useRef(false);
 const bulkDownloadStopRequested = useRef(false);
+
+useEffect(() => {
+  setBulkMessage("");
+}, [selectedGenre]);
 
   useEffect(() => {
     async function load() {
@@ -200,6 +209,86 @@ function toggleAllVisible() {
   });
 }
 
+async function selectUnsavedThumbnails() {
+  if (bulkDownloading) return;
+
+  try {
+    const savedIds = new Set(
+      await getSavedThumbnailIds()
+    );
+
+    const unsaved = links
+      .filter((link) => !savedIds.has(link.id))
+      .slice(0, 100);
+
+    setSelectedIds(
+      new Set(unsaved.map((link) => link.id))
+    );
+
+    if (unsaved.length === 0) {
+      setBulkMessage(
+        "現在表示されているカードに未保存の画像はありません。"
+      );
+    } else {
+      setBulkMessage(
+        `未保存のカードを${unsaved.length}件選択しました。`
+      );
+    }
+  } catch (error) {
+    setBulkMessage(
+      `保存履歴の取得に失敗しました：${
+        error instanceof Error
+          ? error.message
+          : "不明なエラー"
+      }`
+    );
+  }
+}
+
+async function resetSelectedThumbnailHistory() {
+  if (bulkDownloading || selectedIds.size === 0) {
+    return;
+  }
+
+  try {
+    const savedIds = new Set(
+      await getSavedThumbnailIds()
+    );
+
+    const targetIds = [...selectedIds].filter(
+      (id) => savedIds.has(id)
+    );
+
+    if (targetIds.length === 0) {
+      setBulkMessage(
+        "選択したカードに保存履歴はありません。"
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `選択したカードのうち、${targetIds.length}件の画像保存履歴を解除しますか？\n\n` +
+      "端末に保存した画像ファイルは削除されません。"
+    );
+
+    if (!confirmed) return;
+
+    await clearSelectedThumbnailHistory(targetIds);
+
+    setBulkMessage(
+      `${targetIds.length}件の画像保存履歴を解除しました。`
+    );
+  } catch (error) {
+    setBulkMessage(
+      `画像保存履歴の解除に失敗しました：${
+        error instanceof Error
+          ? error.message
+          : "不明なエラー"
+      }`
+    );
+  }
+}
+
 async function downloadSelectedImages() {
   if (bulkDownloadRunning.current) {
     return;
@@ -291,6 +380,19 @@ if (result.ok) {
 
   if (result.saveMethod === "folder") {
     folderSaved++;
+  }
+
+  try {
+    await saveThumbnailHistory(
+      link.id,
+      `RL_${selectedGenre || "ALL"}_ID${link.id}`
+    );
+  } catch (error) {
+    console.error(
+      "画像保存履歴の記録に失敗しました:",
+      link.id,
+      error
+    );
   }
 } else {
   failed++;
@@ -571,67 +673,111 @@ async function deleteSelectedLinks() {
 </div>
 
 {bulkMode && (
-<div className="panel adminBulkPanel">
-    <div className="adminBulkRow">
-      <button
-        type="button"
-        className="btn"
-        onClick={toggleAllVisible}
-        disabled={!links.length}
-      >
-        ☑ すべて選択
-      </button>
+  <div className="panel adminBulkPanel">
 
-      <span className="small">
-        {selectedIds.size}件選択中
-      </span>
-    </div>
+    {/* カード管理 */}
+    <section style={{ marginBottom: 24 }}>
+      <h3 style={{ marginTop: 0, marginBottom: 12 }}>
+        カード管理
+      </h3>
 
-    <div className="actions">
-      <select
-        value={bulkGenre}
-        onChange={(event) =>
-          setBulkGenre(event.target.value)
-        }
-      >
-        <option value="">移動先ジャンル</option>
+      <div className="adminBulkRow">
+        <button
+          type="button"
+          className="btn"
+          onClick={toggleAllVisible}
+          disabled={!links.length}
+        >
+          ☑ すべて選択
+        </button>
 
-        {genres.map((genre) => (
-          <option key={genre} value={genre}>
-            {genre}
-          </option>
-        ))}
-      </select>
+        <span className="small">
+          {selectedIds.size}件選択中
+        </span>
+      </div>
 
-      <button
-        type="button"
-        className="btn"
-        onClick={moveSelectedLinks}
-        disabled={
-          !bulkGenre || selectedIds.size === 0
-        }
-      >
-        ジャンル移動
-      </button>
+      <div className="actions" style={{ marginTop: 12 }}>
+        <select
+          value={bulkGenre}
+          onChange={(event) =>
+            setBulkGenre(event.target.value)
+          }
+        >
+          <option value="">移動先ジャンル</option>
 
-      <button
-        type="button"
-        className="btn danger"
-        onClick={deleteSelectedLinks}
-        disabled={selectedIds.size === 0}
-      >
-        削除
-      </button>
-            <button
-        type="button"
-        className="btn"
-        onClick={downloadSelectedImages}
-        disabled={selectedIds.size === 0 || bulkDownloading}
-      >
-        {bulkDownloading ? "画像保存中..." : "画像保存"}
-      </button>
+          {genres.map((genre) => (
+            <option key={genre} value={genre}>
+              {genre}
+            </option>
+          ))}
+        </select>
 
-    </div>
+        <button
+          type="button"
+          className="btn"
+          onClick={moveSelectedLinks}
+          disabled={!bulkGenre || selectedIds.size === 0}
+        >
+          ジャンル移動
+        </button>
+
+        <button
+          type="button"
+          className="btn danger"
+          onClick={deleteSelectedLinks}
+          disabled={selectedIds.size === 0}
+        >
+          削除
+        </button>
+      </div>
+    </section>
+
+    <hr
+      style={{
+        border: 0,
+        borderTop: "1px solid #d1d5db",
+        margin: "20px 0",
+      }}
+    />
+
+    {/* 画像の一括保存 */}
+    <section>
+      <h3 style={{ marginTop: 0, marginBottom: 12 }}>
+        画像の一括保存
+      </h3>
+
+      <div className="actions">
+        <button
+          type="button"
+          className="btn"
+          onClick={selectUnsavedThumbnails}
+          disabled={!links.length || bulkDownloading}
+        >
+          未保存を100件選択
+        </button>
+
+        <button
+          type="button"
+          className="btn"
+          onClick={downloadSelectedImages}
+          disabled={
+            selectedIds.size === 0 || bulkDownloading
+          }
+        >
+          {bulkDownloading ? "画像保存中..." : "画像保存"}
+        </button>
+<button
+  type="button"
+  className="btn danger"
+  onClick={resetSelectedThumbnailHistory}
+  disabled={
+    selectedIds.size === 0 || bulkDownloading
+  }
+>
+  選択カードの保存履歴を解除
+</button>
+      </div>
+    </section>
 
     {bulkDownloading && (
       <p role="status" className="small">

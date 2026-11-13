@@ -7,6 +7,10 @@ import {
   getDownloadFolder,
   clearDownloadFolder,
 } from "@/lib/download-folder";
+import {
+  getSavedThumbnailCount,
+  clearAllThumbnailHistory,
+} from "@/lib/thumbnail-history";
 
 const STORAGE_KEY = "randomLinkOpenBrowser";
 
@@ -24,6 +28,30 @@ export default function SettingsPage() {
   const [browser, setBrowser] = useState("default");
   const [loaded, setLoaded] = useState(false);
   const [folderTestResult, setFolderTestResult] = useState("");
+const [savedThumbnailCount, setSavedThumbnailCount] =
+  useState<number | null>(null);
+
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadThumbnailCount() {
+    try {
+      const count = await getSavedThumbnailCount();
+
+      if (!cancelled) {
+        setSavedThumbnailCount(count);
+      }
+    } catch (error) {
+      console.error("画像保存履歴の取得に失敗しました:", error);
+    }
+  }
+
+  void loadThumbnailCount();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -149,6 +177,34 @@ async function resetDownloadFolder() {
   }
 }
 
+async function resetThumbnailHistory() {
+  if (
+    !window.confirm(
+      "すべての画像保存履歴を解除しますか？\n\n" +
+      "保存済みカードはすべて未保存扱いになります。\n" +
+      "端末に保存した画像ファイルは削除されません。"
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await clearAllThumbnailHistory();
+
+    setSavedThumbnailCount(0);
+
+    alert("すべての画像保存履歴を解除しました。");
+  } catch (error) {
+    alert(
+      `画像保存履歴の解除に失敗しました：${
+        error instanceof Error
+          ? error.message
+          : "不明なエラー"
+      }`
+    );
+  }
+}
+
   return (
     <main className="container">
       <h1>設定</h1>
@@ -215,6 +271,29 @@ async function resetDownloadFolder() {
   ブラウザ標準のダウンロード先に保存します。
 </p>
       </section>
+
+<section className="panel form">
+  <h2>画像保存履歴の管理</h2>
+
+  <p className="small">
+    保存済みカード：
+    {savedThumbnailCount === null
+      ? "読み込み中"
+      : `${savedThumbnailCount}件`}
+  </p>
+<button
+  type="button"
+  className="btn danger"
+  onClick={resetThumbnailHistory}
+  style={{ marginTop: 12 }}
+>
+  全カードの保存履歴を解除
+</button>
+  <p className="small">
+    画像の保存履歴を管理します。
+    保存先フォルダを変更しても履歴は維持されます。
+  </p>
+</section>
 
 <Link
   href="/help"
