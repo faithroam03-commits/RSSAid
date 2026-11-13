@@ -463,10 +463,15 @@ router.push(getReturnPath());
         aria-label="サムネイルをダウンロード"
         title="画像を保存"
         onClick={async () => {
-          const result = await downloadThumbnail(
-            getDisplayImageUrl(thumbnailUrl),
-            title || "thumbnail"
-          );
+const candidateNumber =
+  candidates.findIndex((src) => src === thumbnailUrl) + 1;
+
+const result = await downloadThumbnail(
+  getDisplayImageUrl(thumbnailUrl),
+  title || "thumbnail",
+  item.id,
+  candidateNumber
+);
 
           if (!result.ok) {
             alert(result.error);

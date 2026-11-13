@@ -34,6 +34,10 @@ export default function RegisterForm({
   const [previewReady, setPreviewReady] = useState(false);
   const [manualMode, setManualMode] = useState(false);
   const [candidates, setCandidates] = useState<string[]>([]);
+  const preDownloadRef = useRef<{
+  url: string;
+  id: string;
+  } | null>(null);
  const router = useRouter();
  const autoFetchStarted = useRef(false);
 const [imageFit, setImageFit] = useState<"cover" | "contain">("contain");
@@ -471,10 +475,22 @@ router.push(`/?genre=${encodeURIComponent(finalGenre)}`);
         aria-label="サムネイルをダウンロード"
         title="画像を保存"
         onClick={async () => {
-          const result = await downloadThumbnail(
-            getDisplayImageUrl(thumbnailUrl),
-            title || "thumbnail"
-          );
+const candidateNumber =
+  candidates.findIndex((src) => src === thumbnailUrl) + 1;
+
+if (preDownloadRef.current?.url !== url) {
+  preDownloadRef.current = {
+    url,
+    id: crypto.randomUUID().slice(0, 8),
+  };
+}
+
+const result = await downloadThumbnail(
+  getDisplayImageUrl(thumbnailUrl),
+  title || "thumbnail",
+  preDownloadRef.current.id,
+  candidateNumber
+);
 
           if (!result.ok) {
             alert(result.error);

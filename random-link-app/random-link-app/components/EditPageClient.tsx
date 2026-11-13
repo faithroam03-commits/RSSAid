@@ -67,6 +67,56 @@ const fromHome = searchParams.get("from") === "home";
   return (
     <>
       <h1>{item.media_id != null ? "メディア編集" : "URL編集"}</h1>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: 16,
+          padding: "10px 12px",
+          background: "rgba(128,128,128,0.08)",
+          borderRadius: 8,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>
+            カードID
+          </div>
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              overflowWrap: "anywhere",
+              userSelect: "text",
+            }}
+          >
+            {item.id}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(
+                String(item.id)
+              );
+              alert("カードIDをコピーしました。");
+            } catch {
+              alert(
+                "コピーに失敗しました。\n" +
+                "IDを長押ししてコピーしてください。"
+              );
+            }
+          }}
+        >
+          コピー
+        </button>
+      </div>
+
 <EditLinkForm
   item={item}
   genres={genres}

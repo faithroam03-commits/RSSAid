@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { insertClientLink } from "@/lib/client-db";
 import { downloadThumbnail } from "@/lib/download-thumbnail";
 import { getDisplayImageUrl } from "@/lib/display-image-url";
@@ -280,6 +280,9 @@ export default function MultipleRegisterForm({
   const [saveTotal, setSaveTotal] = useState(0);
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
   const [showExcludeConfirm, setShowExcludeConfirm] = useState(false);
+  const preDownloadIdsRef = useRef<
+  Map<number, { url: string; id: string }>
+  >(new Map());
 
     async function handleThumbnailFile(
     number: number,
@@ -1090,10 +1093,32 @@ setItems((prev) =>
             aria-label={`No.${item.number}のサムネイルをダウンロード`}
             title="画像を保存"
             onClick={async () => {
-              const result = await downloadThumbnail(
-                getDisplayImageUrl(item.thumbnailUrl),
-                item.title || "thumbnail"
-              );
+const candidateNumber =
+  item.candidates.findIndex(
+    (candidate) => candidate === item.thumbnailUrl
+  ) + 1;
+
+let preDownload =
+  preDownloadIdsRef.current.get(item.number);
+
+if (!preDownload || preDownload.url !== item.value) {
+  preDownload = {
+    url: item.value,
+    id: crypto.randomUUID().slice(0, 8),
+  };
+
+  preDownloadIdsRef.current.set(
+    item.number,
+    preDownload
+  );
+}
+
+const result = await downloadThumbnail(
+  getDisplayImageUrl(item.thumbnailUrl),
+  item.title || "thumbnail",
+  preDownload.id,
+  candidateNumber
+);
 
               if (!result.ok) {
                 alert(result.error);

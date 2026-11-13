@@ -1,5 +1,5 @@
-"use client";
 
+"use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -13,6 +13,7 @@ import {
 
 import { downloadThumbnail } from "@/lib/download-thumbnail";
 import { getDisplayImageUrl } from "@/lib/display-image-url";
+import { getWritableDownloadFolder } from "@/lib/download-folder";
 
 type Props = {
   selectedGenre?: string;
@@ -42,7 +43,11 @@ const [bulkDownloadProgress, setBulkDownloadProgress] = useState({
   total: 0,
 });
 const [bulkDownloadSummary, setBulkDownloadSummary] = useState("");
+const [bulkDownloadFailures, setBulkDownloadFailures] = useState<
+  { id: number; title: string; error: string }[]
+>([]);
 const bulkDownloadRunning = useRef(false);
+const bulkDownloadStopRequested = useRef(false);
 
   useEffect(() => {
     async function load() {
@@ -200,16 +205,17 @@ async function downloadSelectedImages() {
     return;
   }
 
-  const count = selectedIds.size;
-
-  if (count === 0) {
+  if (selectedIds.size === 0) {
     return;
   }
 
-  if (count > 20) {
-    alert("画像保存は一度に20件までです。\n選択件数を減らしてください。");
-    return;
-  }
+if (selectedIds.size > 100) {
+  alert(
+    "画像保存は一度に100件までです。\n" +
+    "選択件数を減らしてください。"
+  );
+  return;
+}
 
   const targets = allLinks.filter((link) =>
     selectedIds.has(link.id)
@@ -229,40 +235,112 @@ async function downloadSelectedImages() {
     return;
   }
 
+  try {
+    await getWritableDownloadFolder();
+  } catch (error) {
+    alert(
+      error instanceof Error
+        ? error.message
+        : "保存先フォルダを確認できませんでした。"
+    );
+    return;
+  }
+
   bulkDownloadRunning.current = true;
+  bulkDownloadStopRequested.current = false;
   setBulkDownloading(true);
+
   setBulkDownloadSummary("");
+  setBulkDownloadFailures([]);
   setBulkDownloadProgress({
     completed: 0,
     total: targets.length,
   });
 
-  let requested = 0;
-  let failed = 0;
+let requested = 0;
+let folderSaved = 0;
+let failed = 0;
+  let completed = 0;
+  let stopped = false;
+
+  const failedLinks: {
+  id: number;
+  title: string;
+  error: string;
+  }[] = [];
 
   try {
     for (let i = 0; i < targets.length; i++) {
-      const link = targets[i];
-
-      const result = await downloadThumbnail(
-        getDisplayImageUrl(link.thumbnail_url),
-        link.title
-      );
-
-      if (result.ok) {
-        requested++;
-      } else {
-        failed++;
-      }
-
-      setBulkDownloadProgress({
-        completed: i + 1,
-        total: targets.length,
-      });
+    if (bulkDownloadStopRequested.current) {
+    stopped = true;
+    break;
     }
 
+  const link = targets[i];
+
+const result = await downloadThumbnail(
+  getDisplayImageUrl(link.thumbnail_url),
+  link.title,
+  link.id,
+  undefined,
+  selectedGenre || "ALL"
+);
+
+if (result.ok) {
+  requested++;
+
+  if (result.saveMethod === "folder") {
+    folderSaved++;
+  }
+} else {
+  failed++;
+
+  failedLinks.push({
+    id: link.id,
+    title: link.title,
+    error: result.error,
+  });
+}
+
+completed = i + 1;
+
+setBulkDownloadProgress({
+  completed: i + 1,
+  total: targets.length,
+});
+    }
+
+if (stopped) {
+  const remaining = targets.slice(completed);
+
+  setSelectedIds(
+    new Set(remaining.map((link) => link.id))
+  );
+
+  setBulkDownloadSummary(
+    `保存を中断しました。` +
+    `処理済み：${completed}件 / ` +
+`フォルダ保存完了：${folderSaved}件 / ` +
+`取得成功：${requested}件 / ` +
+    `取得失敗：${failed}件 / ` +
+    `未処理：${remaining.length}件（自動選択済み）`
+  );
+} else {
+  setBulkDownloadSummary(
+`フォルダ保存完了：${folderSaved}件 / ` +
+`取得成功：${requested}件 / ` +
+    `取得失敗：${failed}件`
+  );
+}
+
+setBulkDownloadFailures(failedLinks);
+
+  } catch (error) {
     setBulkDownloadSummary(
-      `ダウンロード要求：${requested}件 / 取得失敗：${failed}件`
+      "画像保存処理を中断しました：" +
+      (error instanceof Error
+        ? error.message
+        : "不明なエラー")
     );
   } finally {
     bulkDownloadRunning.current = false;
@@ -492,8 +570,8 @@ async function deleteSelectedLinks() {
   </button>
 </div>
 
-      {bulkMode && (
-  <div className="panel adminBulkPanel">
+{bulkMode && (
+<div className="panel adminBulkPanel">
     <div className="adminBulkRow">
       <button
         type="button"
@@ -552,6 +630,7 @@ async function deleteSelectedLinks() {
       >
         {bulkDownloading ? "画像保存中..." : "画像保存"}
       </button>
+
     </div>
 
     {bulkDownloading && (
@@ -567,6 +646,68 @@ async function deleteSelectedLinks() {
         {bulkDownloadSummary}
       </p>
     )}
+
+{bulkDownloadFailures.length > 0 && (
+  <details style={{ marginTop: 12 }}>
+    <summary
+      style={{
+        cursor: "pointer",
+        fontWeight: 600,
+      }}
+    >
+      保存失敗したカード
+      （{bulkDownloadFailures.length}件）
+    </summary>
+
+<button
+  type="button"
+  className="btn"
+  style={{ marginTop: 12 }}
+  disabled={bulkDownloading}
+  onClick={() => {
+    setSelectedIds(
+      new Set(
+        bulkDownloadFailures.map((item) => item.id)
+      )
+    );
+  }}
+>
+  失敗したカードだけ選択
+</button>
+
+    <ul style={{ paddingLeft: 20 }}>
+      {bulkDownloadFailures.map((failedLink) => (
+        <li
+          key={failedLink.id}
+          style={{ marginTop: 12 }}
+        >
+<Link
+  href={
+    selectedGenre
+      ? `/admin/${failedLink.id}?genre=${encodeURIComponent(selectedGenre)}`
+      : `/admin/${failedLink.id}`
+  }
+  style={{
+    color: "#2563eb",
+    textDecoration: "underline",
+    fontWeight: 600,
+  }}
+>
+  {failedLink.title}
+</Link>
+
+          <div className="small">
+            カードID：{failedLink.id}
+          </div>
+
+          <div className="small">
+            {failedLink.error}
+          </div>
+        </li>
+      ))}
+    </ul>
+  </details>
+)}
 
     {bulkMessage && (
       <p
@@ -592,6 +733,33 @@ async function deleteSelectedLinks() {
   selectedIds={selectedIds}
   onToggleSelected={toggleSelected}
 />
+
+{bulkMode && bulkDownloading && (
+  <button
+    type="button"
+    onClick={() => {
+      bulkDownloadStopRequested.current = true;
+    }}
+    style={{
+      position: "fixed",
+      right: "16px",
+      bottom: "calc(24px + env(safe-area-inset-bottom, 0px))",
+      zIndex: 1000,
+      padding: "12px 18px",
+      backgroundColor: "#b91c1c",
+      color: "#ffffff",
+      border: "1px solid #991b1b",
+      borderRadius: "999px",
+      fontSize: "14px",
+      fontWeight: 700,
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+      cursor: "pointer",
+    }}
+  >
+    保存を中断
+  </button>
+)}
+
     </>
   );
 }

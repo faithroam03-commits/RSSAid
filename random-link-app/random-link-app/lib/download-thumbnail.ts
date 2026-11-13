@@ -1,7 +1,11 @@
 import { getWritableDownloadFolder } from "@/lib/download-folder";
 
 export type ThumbnailDownloadResult =
-  | { ok: true }
+  | {
+      ok: true;
+      fileName: string;
+      saveMethod: "folder" | "browser";
+    }
   | { ok: false; error: string };
 
 function safeFileName(title: string): string {
@@ -51,13 +55,17 @@ function extensionFromType(type: string): string {
 
 export async function downloadThumbnail(
   imageUrl: string,
-  title: string
+  title: string,
+  cardId?: number | string,
+  candidateNumber?: number,
+  genreName?: string
 ): Promise<ThumbnailDownloadResult> {
   if (!imageUrl.trim()) {
     return { ok: false, error: "サムネイルがありません。" };
   }
 
-  let objectUrl: string | null = null;
+let objectUrl: string | null = null;
+let errorStage = "保存先フォルダの確認";
 
   try {
   // 画像取得前に保存先フォルダの権限を確認する。
@@ -68,19 +76,29 @@ export async function downloadThumbnail(
     try {
       const parsed = new URL(imageUrl);
 
-      if (
-        parsed.protocol === "https:" &&
-        parsed.hostname.toLowerCase() === "i.pinimg.com"
-      ) {
-        fetchUrl =
-          "/api/image-proxy?url=" +
-          encodeURIComponent(imageUrl);
-      }
+const hostname = parsed.hostname.toLowerCase();
+
+if (
+  parsed.protocol === "https:" &&
+  (
+    hostname === "i.pinimg.com" ||
+    hostname === "cache2-ebookjapan.akamaized.net" ||
+    hostname === "www.gamespark.jp"
+  )
+) {
+  fetchUrl =
+    "/api/image-proxy?url=" +
+    encodeURIComponent(imageUrl);
+}
     } catch {
       // Data URLや相対URLはそのまま扱う。
     }
 
-    const response = await fetch(fetchUrl);
+errorStage = fetchUrl.startsWith("/api/image-proxy")
+  ? "画像取得（プロキシ）"
+  : "画像取得（直接）";
+
+const response = await fetch(fetchUrl);
 
     if (!response.ok) {
       throw new Error(`画像取得に失敗しました（${response.status}）。`);
@@ -92,12 +110,53 @@ export async function downloadThumbnail(
       throw new Error("取得したファイルが画像ではありません。");
     }
 
+errorStage = "保存先へのファイル書き込み";
+
 const extension = extensionFromType(blob.type);
-const uniqueId = crypto.randomUUID().slice(0, 8);
-const fileName = `${safeFileName(title)}_${timestamp()}_${uniqueId}.${extension}`;
+
+const candidateSuffix =
+  candidateNumber !== undefined
+    ? `_${String(candidateNumber).padStart(2, "0")}`
+    : "";
+
+const genrePart = genreName?.trim()
+  ? `${safeFileName(genreName)}_`
+  : "";
+
+const baseFileName =
+  typeof cardId === "number"
+    ? `RL_${genrePart}ID${cardId}${candidateSuffix}`
+    : typeof cardId === "string"
+      ? `RL_PRE${cardId}${candidateSuffix}`
+      : `${safeFileName(title)}_${timestamp()}_${crypto.randomUUID().slice(0, 8)}${candidateSuffix}`;
+
+let fileName = `${baseFileName}.${extension}`;
 
 // 保存先が設定されている場合は直接書き込む。
 if (targetFolder) {
+  // 同名ファイルが存在する場合は連番を付ける。
+  let duplicateNumber = 2;
+
+  while (true) {
+    try {
+      await targetFolder.getFileHandle(fileName);
+
+      fileName =
+        `${baseFileName}-${duplicateNumber}.${extension}`;
+
+      duplicateNumber++;
+    } catch (error) {
+      if (
+        error instanceof DOMException &&
+        error.name === "NotFoundError"
+      ) {
+        break;
+      }
+
+      throw error;
+    }
+  }
+
   const fileHandle = await targetFolder.getFileHandle(
     fileName,
     { create: true }
@@ -113,7 +172,11 @@ if (targetFolder) {
     throw error;
   }
 
-  return { ok: true };
+return {
+  ok: true,
+  fileName,
+  saveMethod: "folder",
+};
 }
 
 // 保存先未設定の場合は従来のダウンロード方式。
@@ -129,23 +192,21 @@ const anchor = document.createElement("a");
     anchor.click();
     anchor.remove();
 
-    return { ok: true };
+return {
+  ok: true,
+  fileName,
+  saveMethod: "browser",
+};
   } catch (error) {
-    const isFetchError =
-      error instanceof TypeError ||
-      (error instanceof Error &&
-        error.message === "Failed to fetch");
+const detail =
+  error instanceof Error
+    ? `${error.name}: ${error.message}`
+    : String(error);
 
-    return {
-      ok: false,
-      error: isFetchError
-        ? "画像を取得できませんでした。\n\n" +
-          "画像提供元のアクセス制限（CORS）または通信エラーの可能性があります。\n\n" +
-          "別のサムネイル候補をお試しください。"
-        : error instanceof Error
-          ? error.message
-          : "画像のダウンロードに失敗しました。",
-    };
+return {
+  ok: false,
+  error: `${errorStage}で失敗しました。\n${detail}`,
+};
   } finally {
     if (objectUrl) {
       // ブラウザがダウンロード処理を開始できるよう、
