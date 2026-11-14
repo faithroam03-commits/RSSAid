@@ -21,6 +21,9 @@ import {
 } from "@/lib/thumbnail-history";
 import { createPortal } from "react-dom";
 
+const BULK_RESULT_STORAGE_KEY =
+  "random-link-admin-bulk-result";
+
 type Props = {
   selectedGenre?: string;
   query: string;
@@ -54,6 +57,87 @@ const [bulkDownloadFailures, setBulkDownloadFailures] = useState<
 >([]);
 const bulkDownloadRunning = useRef(false);
 const bulkDownloadStopRequested = useRef(false);
+const [bulkResultLoaded, setBulkResultLoaded] =
+  useState(false);
+
+useEffect(() => {
+  try {
+    const raw = sessionStorage.getItem(
+      BULK_RESULT_STORAGE_KEY
+    );
+
+    if (raw) {
+      const saved = JSON.parse(raw) as {
+        summary: string;
+        failures: {
+          id: number;
+          title: string;
+          error: string;
+        }[];
+      };
+
+      if (
+        typeof saved.summary === "string" &&
+        Array.isArray(saved.failures) &&
+        saved.failures.every(
+          (item) =>
+            item !== null &&
+            typeof item === "object" &&
+            typeof item.id === "number" &&
+            typeof item.title === "string" &&
+            typeof item.error === "string"
+        )
+      ) {
+        setBulkDownloadSummary(saved.summary);
+        setBulkDownloadFailures(saved.failures);
+
+        // 戻ってきた際に一括操作パネルを開く
+        setBulkMode(true);
+      }
+    }
+  } catch (error) {
+    console.error(
+      "画像保存結果の復元に失敗しました:",
+      error
+    );
+  } finally {
+    setBulkResultLoaded(true);
+  }
+}, []);
+
+useEffect(() => {
+  if (!bulkResultLoaded) return;
+
+  try {
+    if (
+      bulkMode &&
+      (bulkDownloadSummary ||
+        bulkDownloadFailures.length > 0)
+    ) {
+      sessionStorage.setItem(
+        BULK_RESULT_STORAGE_KEY,
+        JSON.stringify({
+          summary: bulkDownloadSummary,
+          failures: bulkDownloadFailures,
+        })
+      );
+    } else {
+      sessionStorage.removeItem(
+        BULK_RESULT_STORAGE_KEY
+      );
+    }
+  } catch (error) {
+    console.error(
+      "画像保存結果の記録に失敗しました:",
+      error
+    );
+  }
+}, [
+  bulkResultLoaded,
+  bulkMode,
+  bulkDownloadSummary,
+  bulkDownloadFailures,
+]);
 
 useEffect(() => {
   setBulkMessage("");
@@ -795,7 +879,10 @@ async function deleteSelectedLinks() {
     )}
 
 {bulkDownloadFailures.length > 0 && (
-  <details style={{ marginTop: 12 }}>
+<details
+  open
+  style={{ marginTop: 12 }}
+>
     <summary
       style={{
         cursor: "pointer",
