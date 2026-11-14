@@ -19,6 +19,7 @@ import {
   getSavedThumbnailIds,
   clearSelectedThumbnailHistory,
 } from "@/lib/thumbnail-history";
+import { createPortal } from "react-dom";
 
 type Props = {
   selectedGenre?: string;
@@ -880,32 +881,37 @@ async function deleteSelectedLinks() {
   onToggleSelected={toggleSelected}
 />
 
-{bulkMode && bulkDownloading && (
-  <button
-    type="button"
-    onClick={() => {
-      bulkDownloadStopRequested.current = true;
-    }}
-    style={{
-      position: "fixed",
-      right: "16px",
-      bottom: "calc(24px + env(safe-area-inset-bottom, 0px))",
-      zIndex: 1000,
-      padding: "12px 18px",
-      backgroundColor: "#b91c1c",
-      color: "#ffffff",
-      border: "1px solid #991b1b",
-      borderRadius: "999px",
-      fontSize: "14px",
-      fontWeight: 700,
-      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-      cursor: "pointer",
-    }}
-  >
-    保存を中断
-  </button>
-)}
-
+{bulkMode &&
+  bulkDownloading &&
+  typeof document !== "undefined" &&
+  createPortal(
+    <button
+      type="button"
+      onClick={() => {
+        bulkDownloadStopRequested.current = true;
+      }}
+      style={{
+        position: "fixed",
+        right: "max(16px, env(safe-area-inset-right, 0px))",
+        bottom: "calc(24px + env(safe-area-inset-bottom, 0px))",
+        zIndex: 10000,
+        maxWidth: "calc(100vw - 32px)",
+        boxSizing: "border-box",
+        padding: "12px 18px",
+        backgroundColor: "#b91c1c",
+        color: "#ffffff",
+        border: "1px solid #991b1b",
+        borderRadius: "999px",
+        fontSize: "14px",
+        fontWeight: 700,
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+        cursor: "pointer",
+      }}
+    >
+      保存を中断
+    </button>,
+    document.body
+  )}
     </>
   );
 }
