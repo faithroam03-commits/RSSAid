@@ -8,6 +8,7 @@ import {
   deleteClientLink,
   getClientGenres,
   getClientLinks,
+  insertClientGenre,
   updateClientLink,
 } from "@/lib/client-db";
 
@@ -535,6 +536,48 @@ setBulkDownloadFailures(failedLinks);
   }
 }
 
+async function createBulkGenre() {
+  if (bulkDownloading) return;
+
+  const input = window.prompt(
+    "新しいジャンル名を入力してください。"
+  );
+
+  if (input === null) return;
+
+  const name = input.trim();
+
+  if (!name) {
+    alert("ジャンル名を入力してください。");
+    return;
+  }
+
+  const alreadyExists = genres.includes(name);
+
+  try {
+    const genreName = await insertClientGenre(name);
+
+    const updatedGenres = await getClientGenres();
+
+    setGenres(updatedGenres);
+    setBulkGenre(genreName);
+
+    setBulkMessage(
+      alreadyExists
+        ? `既存のジャンル「${genreName}」を選択しました。`
+        : `ジャンル「${genreName}」を作成しました。`
+    );
+  } catch (error) {
+    alert(
+      `ジャンルの作成に失敗しました：${
+        error instanceof Error
+          ? error.message
+          : "不明なエラー"
+      }`
+    );
+  }
+}
+
 async function moveSelectedLinks() {
   if (!bulkGenre || selectedIds.size === 0) {
     return;
@@ -782,21 +825,48 @@ async function deleteSelectedLinks() {
       </div>
 
       <div className="actions" style={{ marginTop: 12 }}>
-        <select
-          value={bulkGenre}
-          onChange={(event) =>
-            setBulkGenre(event.target.value)
-          }
-        >
-          <option value="">移動先ジャンル</option>
+<div
+  style={{
+    display: "flex",
+    gap: 8,
+    alignItems: "stretch",
+    width: "100%",
+  }}
+>
+  <select
+    value={bulkGenre}
+    onChange={(event) =>
+      setBulkGenre(event.target.value)
+    }
+    style={{
+      flex: "1 1 0",
+      minWidth: 0,
+      width: "auto",
+    }}
+  >
+    <option value="">移動先ジャンル</option>
 
-          {genres.map((genre) => (
-            <option key={genre} value={genre}>
-              {genre}
-            </option>
-          ))}
-        </select>
+    {genres.map((genre) => (
+      <option key={genre} value={genre}>
+        {genre}
+      </option>
+    ))}
+  </select>
 
+  <button
+    type="button"
+    className="btn"
+    onClick={createBulkGenre}
+    disabled={bulkDownloading}
+    style={{
+      flexShrink: 0,
+      whiteSpace: "nowrap",
+      padding: "8px 12px",
+    }}
+  >
+    ＋ 新規
+  </button>
+</div>
         <button
           type="button"
           className="btn"
