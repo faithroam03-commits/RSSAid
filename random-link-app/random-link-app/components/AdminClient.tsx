@@ -58,6 +58,8 @@ const [bulkDownloadFailures, setBulkDownloadFailures] = useState<
 >([]);
 const bulkDownloadRunning = useRef(false);
 const bulkDownloadStopRequested = useRef(false);
+const [cancelButtonRightEdge, setCancelButtonRightEdge] =
+  useState<number | null>(null);
 const [bulkResultLoaded, setBulkResultLoaded] =
   useState(false);
 
@@ -143,6 +145,58 @@ useEffect(() => {
 useEffect(() => {
   setBulkMessage("");
 }, [selectedGenre]);
+
+useEffect(() => {
+  if (!bulkDownloading) return;
+
+  function updateCancelButtonPosition() {
+    const viewport = window.visualViewport;
+
+    const visibleRight =
+      (viewport?.offsetLeft ?? 0) +
+      (viewport?.width ?? window.innerWidth);
+
+    setCancelButtonRightEdge(
+      Math.max(16, visibleRight - 16)
+    );
+  }
+
+  updateCancelButtonPosition();
+
+  const viewport = window.visualViewport;
+
+  viewport?.addEventListener(
+    "resize",
+    updateCancelButtonPosition
+  );
+
+  viewport?.addEventListener(
+    "scroll",
+    updateCancelButtonPosition
+  );
+
+  window.addEventListener(
+    "resize",
+    updateCancelButtonPosition
+  );
+
+  return () => {
+    viewport?.removeEventListener(
+      "resize",
+      updateCancelButtonPosition
+    );
+
+    viewport?.removeEventListener(
+      "scroll",
+      updateCancelButtonPosition
+    );
+
+    window.removeEventListener(
+      "resize",
+      updateCancelButtonPosition
+    );
+  };
+}, [bulkDownloading]);
 
   useEffect(() => {
     async function load() {
@@ -1048,9 +1102,14 @@ async function deleteSelectedLinks() {
         bulkDownloadStopRequested.current = true;
       }}
       style={{
-        position: "fixed",
-        right: "max(16px, env(safe-area-inset-right, 0px))",
-        bottom: "calc(24px + env(safe-area-inset-bottom, 0px))",
+position: "fixed",
+left:
+  cancelButtonRightEdge === null
+    ? "calc(100vw - 16px)"
+    : `${cancelButtonRightEdge}px`,
+right: "auto",
+transform: "translateX(-100%)",
+bottom: "calc(24px + env(safe-area-inset-bottom, 0px))",
         zIndex: 10000,
         maxWidth: "calc(100vw - 32px)",
         boxSizing: "border-box",
