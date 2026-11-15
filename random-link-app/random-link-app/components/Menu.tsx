@@ -116,7 +116,11 @@ tracking = details.open
        トップ
       </Link>
 
-<Link href="/register" onClick={closeMenu}>
+<Link
+  href="/register"
+  onClick={closeMenu}
+  className="menuRegisterHighlight"
+>
   ＋ 新規登録
 </Link>
 

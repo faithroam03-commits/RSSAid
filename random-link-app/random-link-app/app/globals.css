@@ -169,6 +169,15 @@ th, td { padding:12px 9px; border-bottom:1px solid var(--line); text-align:left;
   white-space: nowrap;
   padding: 12px 14px;
 }
+
+/* ===== 新規登録メニューの強調 ===== */
+
+.menuPanel a.menuRegisterHighlight {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* ===== Genre Tabs ===== */
 
 .genreTabs {
