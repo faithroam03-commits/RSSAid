@@ -20,6 +20,8 @@ type UrlItem = {
   candidates: string[];
   showAllCandidates: boolean;
   genre: string;
+  showInAll: boolean;
+  showInGenre: boolean;
   status:
     | "pending"
     | "loading"
@@ -263,9 +265,9 @@ async function convertThumbnailFile(
 export default function MultipleRegisterForm({
   genres,
 }: Props) {
-  const [urlText, setUrlText] = useState("");
-  const [genre, setGenre] = useState("New");
-  const [availableGenres, setAvailableGenres] = useState(genres);
+const [urlText, setUrlText] = useState("");
+const [genre, setGenre] = useState("New");
+const [availableGenres, setAvailableGenres] = useState(genres);
   const [showGenreAdd, setShowGenreAdd] = useState(false);
   const [newGenre, setNewGenre] = useState("");
   const [items, setItems] = useState<UrlItem[]>([]);
@@ -479,6 +481,8 @@ const nextItems: UrlItem[] = lines.map(
     candidates: [],
     showAllCandidates: false,
     genre: showGenreAdd ? newGenre.trim() || "New" : genre,
+    showInAll: true,
+    showInGenre: true,
     status: "pending",
     notice: "",
     saveStatus: "unsaved",
@@ -664,6 +668,8 @@ await insertClientLink({
   thumbnailUrl: item.thumbnailUrl,
   genre: item.genre,
   imageFit: item.imageFit,
+  showInAll: item.showInAll ? 1 : 0,
+  showInGenre: item.showInGenre ? 1 : 0,
 });
 
         setItems((prev) =>
@@ -917,7 +923,6 @@ setItems((prev) =>
     </div>
   </div>
 )}
-
           {items.map((item) => (
             <div
               key={item.number}
@@ -1041,6 +1046,78 @@ setItems((prev) =>
   )}
 </select>
   </label>
+)}
+
+{(item.status === "ready" ||
+  item.status === "metadata_error") && (
+  <div
+    style={{
+      display: "grid",
+      gap: 12,
+      marginTop: 16,
+      marginBottom: 16,
+    }}
+  >
+    <label
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={item.showInAll}
+        disabled={
+          isSaving ||
+          isCheckingSafety ||
+          item.saveStatus === "saved"
+        }
+        onChange={(e) => {
+          const checked = e.target.checked;
+
+          setItems((prev) =>
+            prev.map((current) =>
+              current.number === item.number
+                ? { ...current, showInAll: checked }
+                : current
+            )
+          );
+        }}
+      />
+      ALLに表示する
+    </label>
+
+    <label
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={item.showInGenre}
+        disabled={
+          isSaving ||
+          isCheckingSafety ||
+          item.saveStatus === "saved"
+        }
+        onChange={(e) => {
+          const checked = e.target.checked;
+
+          setItems((prev) =>
+            prev.map((current) =>
+              current.number === item.number
+                ? { ...current, showInGenre: checked }
+                : current
+            )
+          );
+        }}
+      />
+      ジャンルタブに表示する
+    </label>
+  </div>
 )}
 
 {(item.status === "ready" ||
@@ -1195,32 +1272,59 @@ const result = await downloadThumbnail(
 )}
 {(item.status === "ready" ||
   item.status === "metadata_error") && (
-  <label
-    className="btn"
+  <div
     style={{
-      display: "inline-block",
+      display: "flex",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: 8,
       marginTop: 16,
     }}
   >
-    端末から画像を選択
-    <input
-      type="file"
-      accept="image/*"
-      disabled={
-        isSaving ||
-        isCheckingSafety ||
-        item.saveStatus === "saved"
-      }
-      onChange={(e) => {
-        const file = e.target.files?.[0];
-        void handleThumbnailFile(item.number, file);
-        e.target.value = "";
+    <label
+      className="btn"
+      style={{
+        padding: "10px 12px",
+        fontSize: 14,
+        whiteSpace: "nowrap",
       }}
-      style={{ display: "none" }}
-    />
-  </label>
-)}
+    >
+      端末から画像を選択
+      <input
+        type="file"
+        accept="image/*"
+        disabled={
+          isSaving ||
+          isCheckingSafety ||
+          item.saveStatus === "saved"
+        }
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          void handleThumbnailFile(item.number, file);
+          e.target.value = "";
+        }}
+        style={{ display: "none" }}
+      />
+    </label>
 
+    {item.valid &&
+      item.safetyStatus !== "unsafe" && (
+        <a
+          className="btn"
+          href={item.value}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            padding: "10px 12px",
+            fontSize: 14,
+            whiteSpace: "nowrap",
+          }}
+        >
+          元URLを開く
+        </a>
+      )}
+  </div>
+)}
 {(item.status === "ready" ||
   item.status === "metadata_error") &&
   item.candidates.length > 0 && (

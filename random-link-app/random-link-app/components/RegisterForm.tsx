@@ -23,6 +23,8 @@ export default function RegisterForm({
   const [url, setUrl] = useState(initialUrl);
   const [busy, setBusy] = useState(false);
   const [genre, setGenre] = useState("New");
+  const [showInAll, setShowInAll] = useState(true);
+  const [showInGenre, setShowInGenre] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [duplicateNotice, setDuplicateNotice] =
   useState<string | null>(null);
@@ -319,13 +321,15 @@ if (!safetyResult?.safe) {
     finalGenre = name;
   }
 
-  await insertClientLink({
-    url,
-    title,
-    thumbnailUrl,
-    imageFit,
-    genre: finalGenre,
-  });
+await insertClientLink({
+  url,
+  title,
+  thumbnailUrl,
+  imageFit,
+  genre: finalGenre,
+  showInAll: showInAll ? 1 : 0,
+  showInGenre: showInGenre ? 1 : 0,
+});
 
 setMessage(`「${title}」を${finalGenre}に追加しました。`);
 
@@ -533,14 +537,26 @@ const result = await downloadThumbnail(
     </div>
 </div>
 )}
-        <button
-      type="submit"
-      className="btn primary"
-      disabled={busy}
-      style={{ marginTop: 16 }}
+<div className="actions" style={{ marginTop: 16 }}>
+  <button
+    type="submit"
+    className="btn primary"
+    disabled={busy}
+  >
+    URLを登録
+  </button>
+
+  {/^[\s]*https?:\/\/\S+[\s]*$/i.test(url) && (
+    <a
+      className="btn"
+      href={url.trim()}
+      target="_blank"
+      rel="noopener noreferrer"
     >
-      URLを登録
-    </button>
+      元URLを開く
+    </a>
+  )}
+</div>
 
     {error && <div className="error">{error}</div>}
 
@@ -614,6 +630,38 @@ const result = await downloadThumbnail(
   </div>
 )}
 
+</div>
+
+<div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+  <label
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    }}
+  >
+    <input
+      type="checkbox"
+      checked={showInAll}
+      onChange={(e) => setShowInAll(e.target.checked)}
+    />
+    ALLに表示する
+  </label>
+
+  <label
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    }}
+  >
+    <input
+      type="checkbox"
+      checked={showInGenre}
+      onChange={(e) => setShowInGenre(e.target.checked)}
+    />
+    ジャンルタブに表示する
+  </label>
 </div>
 
 <label style={{ marginTop: 16 }}>

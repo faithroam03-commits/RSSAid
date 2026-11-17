@@ -183,6 +183,8 @@ export type ClientLinkInput = {
   imageFit?: "cover" | "contain";
   mediaId?: number | null;
   genre?: string;
+  showInAll?: number;
+  showInGenre?: number;
 };
 
 export async function insertClientLink(input: ClientLinkInput) {
@@ -200,19 +202,22 @@ const id = Math.max(
   (latest?.primaryKey ?? 0) + 1
 );
 
+  const showInAll = input.showInAll ?? 1;
+  const showInGenre = input.showInGenre ?? 1;
+
   await tx.store.add({
     id,
     url: input.url,
     title: input.title,
-thumbnail_url: input.thumbnailUrl ?? null,
-image_fit: input.imageFit ?? "contain",
-media_id: input.mediaId ?? null,
-genre: finalGenre,
-enabled: 1,
-show_in_all: 1,
-show_in_genre: 1,
-created_at: now,
-updated_at: now,
+    thumbnail_url: input.thumbnailUrl ?? null,
+    image_fit: input.imageFit ?? "contain",
+    media_id: input.mediaId ?? null,
+    genre: finalGenre,
+    enabled: showInAll || showInGenre ? 1 : 0,
+    show_in_all: showInAll,
+    show_in_genre: showInGenre,
+    created_at: now,
+    updated_at: now,
   });
 
   await tx.done;
