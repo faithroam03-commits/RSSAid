@@ -52,7 +52,7 @@ export default function HelpPage() {
         </p>
         <p>
           画面右下の切替ボタンから、
-          1・4・9分割の表示を切り替えられます。
+          1・4・9分割と、画像の縦横比に応じた互い違い表示を切り替えられます。
         </p>
 
         <Link className="helpLink" href="/">

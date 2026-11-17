@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LinkRecord } from "@/lib/types";
 import { openInBrowser } from "@/lib/open-browser";
-type GridSize = 1 | 4 | 9;
+type GridSize = 1 | 4 | 9 | "Masonry";
 
 export default function RandomGrid({
   items,
@@ -28,20 +28,23 @@ export default function RandomGrid({
   useEffect(() => {
     const saved = localStorage.getItem("randomLinkGridSize");
 
-    if (saved === "4") {
-      setGridSize(4);
-    } else if (saved === "9") {
-      setGridSize(9);
-    } else {
-      setGridSize(1);
-    }
+if (saved === "4") {
+  setGridSize(4);
+} else if (saved === "9") {
+  setGridSize(9);
+} else if (saved === "Masonry") {
+  setGridSize("Masonry");
+} else {
+  setGridSize(1);
+}
   }, []);
 
   const changeGridSize = () => {
-    const next: GridSize =
-      gridSize === 1 ? 4 :
-      gridSize === 4 ? 9 :
-      1;
+const next: GridSize =
+  gridSize === 1 ? 4 :
+  gridSize === 4 ? 9 :
+  gridSize === 9 ? "Masonry" :
+  1;
 
     setGridSize(next);
     localStorage.setItem("randomLinkGridSize", String(next));
@@ -58,12 +61,13 @@ export default function RandomGrid({
     router.refresh();
   };
 
-  const visibleCount =
+const visibleCount =
   gridSize === 1 ? 9 :
-  gridSize === 4 ? 16 :
+  gridSize === 4 || gridSize === "Masonry" ? 16 :
   30;
 
 const visibleItems = items.slice(0, visibleCount);
+const cardColumns = [visibleItems];
 
   return (
     <>
@@ -77,7 +81,21 @@ const visibleItems = items.slice(0, visibleCount);
 </div>
 ) : (
 <section className={`randomGrid grid${gridSize}`}>
-    {visibleItems.map((item) => (
+  {cardColumns.map((column, columnIndex) => (
+    <div
+      key={columnIndex}
+      className={
+        gridSize === "Masonry"
+          ? "gridMasonryColumn"
+          : undefined
+      }
+      style={
+        gridSize === "Masonry"
+          ? undefined
+          : { display: "contents" }
+      }
+    >
+      {column.map((item) => (
 <a
   key={item.id}
   href={item.url}
@@ -129,7 +147,9 @@ onClick={(e) => {
                 </div>
               </a>
             ))}
-         </section>
+          </div>
+        ))}
+      </section>
       )}
         </div>
 <button
@@ -167,14 +187,24 @@ onClick={(e) => {
 <button
   className="gridSwitchButton"
   onClick={changeGridSize}
-  aria-label={`現在${gridSize}分割。表示数を変更`}
-  title={`${gridSize}分割`}
+aria-label={
+  gridSize === "Masonry"
+    ? "現在互い違い表示。表示形式を変更"
+    : `現在${gridSize}分割。表示形式を変更`
+}
+title={
+  gridSize === "Masonry"
+    ? "互い違い表示"
+    : `${gridSize}分割`
+}
 >
   <span
     className={`gridSwitchIcon gridSwitchIcon${gridSize}`}
     aria-hidden="true"
   >
-    {Array.from({ length: gridSize }, (_, index) => (
+{Array.from(
+  { length: gridSize === "Masonry" ? 3 : gridSize },
+  (_, index) => (
       <span key={index} />
     ))}
   </span>
